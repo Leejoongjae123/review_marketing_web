@@ -104,7 +104,7 @@ export default function ClientReviewsPage() {
             <tr className="border-b bg-muted/50">
               <th className="h-12 px-4 text-left align-middle font-medium">제목</th>
               <th className="h-12 px-4 text-left align-middle font-medium">제품</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">평점</th>
+              <th className="h-12 px-4 text-left align-middle font-medium">가격</th>
               <th className="h-12 px-4 text-left align-middle font-medium">상태</th>
               <th className="h-12 px-4 text-left align-middle font-medium">작성일</th>
             </tr>
@@ -112,9 +112,9 @@ export default function ClientReviewsPage() {
           <tbody>
             {paginatedReviews.map((review) => (
               <tr key={review.id} className="border-b">
-                <td className="p-4">{review.title}</td>
+                <td className="p-4">{review.platform}</td>
                 <td className="p-4">{review.productName}</td>
-                <td className="p-4">{review.rating}</td>
+                <td className="p-4">{review.price.toLocaleString()}원</td>
                 <td className="p-4">
                   <span className={getStatusStyle(review.status)}>
                     {getStatusText(review.status)}

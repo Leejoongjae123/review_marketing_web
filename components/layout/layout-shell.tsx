@@ -15,13 +15,22 @@ export default function LayoutShell({
 }: LayoutShellProps) {
   return (
     <div className="flex min-h-screen">
-      <Sidebar role={role} menuItems={menuItems} />
+      {/* 데스크톱용 사이드바만 고정 레이아웃에 포함 */}
+      <div className="hidden md:block">
+        <Sidebar role={role} menuItems={menuItems} />
+      </div>
       
-      <div className="w-full min-h-screen flex justify-center items-center">
-        <div className="flex flex-col gap-4 p-4 md:p-8 w-full h-full justify-center items-center">
+      {/* 모바일용 플로팅 메뉴 버튼 */}
+      <div className="fixed top-4 left-4 z-50 md:hidden">
+        <Sidebar role={role} menuItems={menuItems} />
+      </div>
+      
+      {/* 메인 콘텐츠 영역 - 모바일에서는 전체 너비 사용 및 상단 여백 추가 */}
+      <main className="flex-1 w-full min-h-screen">
+        <div className="flex flex-col gap-4 p-4 md:p-8 w-full h-full mt-14 md:mt-0">
           {children}
         </div>
-      </div>
+      </main>
     </div>
   );
 } 

@@ -80,25 +80,30 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
   
   return (
     <>
-      {/* 모바일용 사이드바 */}
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 md:hidden"
-          >
-            <Menu className="h-4 w-4" />
-            <span className="sr-only">메뉴 열기</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-[240px] sm:w-[300px]">
-          <div className="flex flex-col gap-4">
-            <div className="py-4">
-              <h2 className="px-2 text-lg font-semibold tracking-tight">
-                {getRoleDisplayName(role)}
-              </h2>
-              <h3 className="px-2 text-md tracking-tight mb-2">Review WEB</h3>
+      {/* 모바일 환경에서는 버튼과 Sheet를 렌더링 */}
+      <div className="md:hidden">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 rounded-full shadow-md"
+            >
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">메뉴 열기</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[240px] sm:w-[300px] h-screen overflow-y-auto">
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center py-4">
+                <div>
+                  <h2 className="px-2 text-lg font-semibold tracking-tight">
+                    {getRoleDisplayName(role)}
+                  </h2>
+                  <h3 className="px-2 text-md tracking-tight mb-2">Review WEB</h3>
+                </div>
+
+              </div>
               
               {/* 역할 선택 셀렉트 박스 */}
               <div className="px-2">
@@ -116,29 +121,29 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <Separator />
+              <nav className="flex flex-col gap-2 ">
+                {menuItems.map((item, index) => (
+                  <Link 
+                    key={index} 
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted/50",
+                      pathname === item.href && "bg-muted"
+                    )}
+                  >
+                    {item.icon && getIcon(item.icon)}
+                    {item.title}
+                  </Link>
+                ))}
+              </nav>
             </div>
-            <Separator />
-            <nav className="flex flex-col gap-2 ">
-              {menuItems.map((item, index) => (
-                <Link 
-                  key={index} 
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-muted/50",
-                    pathname === item.href && "bg-muted"
-                  )}
-                >
-                  {item.icon && getIcon(item.icon)}
-                  {item.title}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        </SheetContent>
-      </Sheet>
+          </SheetContent>
+        </Sheet>
+      </div>
 
-      {/* 데스크톱용 사이드바 */}
-      <div className="hidden border-r bg-background md:block lg:w-[240px]">
+      {/* 데스크톱 환경에서는 일반 사이드바 렌더링 */}
+      <div className="hidden md:block border-r bg-background w-full lg:w-[240px] h-screen overflow-y-auto">
         <div className="flex h-full flex-col gap-4">
           <div className="py-4">
             <h2 className="px-7 text-lg font-semibold tracking-tight">

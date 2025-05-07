@@ -3,25 +3,27 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: 'admin' | 'provider' | 'client';
   createdAt: string;
   updatedAt: string;
 }
 
 // 리뷰 타입
-export interface Review {
+export type Review = {
   id: string;
-  title: string;
-  content: string;
-  rating: number;
-  status: 'pending' | 'approved' | 'rejected';
-  authorId: string;
-  authorName: string;
-  productId: string;
+  platform: string;
+  imageUrl: string;
   productName: string;
+  optionName: string;
+  price: number;
+  shippingFee: number;
+  seller: string;
+  participants: number;
+  period: string;
   createdAt: string;
-  updatedAt: string;
-}
+  status: "pending" | "approved" | "rejected";
+};
 
 // 회원 이력 타입
 export interface UserHistory {
