@@ -234,8 +234,8 @@ export default function ProviderHistoryPage() {
           </SelectContent>
         </Select>
       </div>
-      <div className="border rounded-lg">
-        <Table>
+      <div className="border rounded-lg overflow-x-auto">
+        <Table className="w-full min-w-[800px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[80px]">번호</TableHead>

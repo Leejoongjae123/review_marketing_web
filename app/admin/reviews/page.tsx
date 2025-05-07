@@ -205,7 +205,7 @@ export default function AdminReviewsPage() {
       </div>
 
       <div className="rounded-md border overflow-x-auto">
-        <table className="w-full min-w-[800px]">
+        <table className="w-full min-w-[1200px]">
           <thead>
             <tr className="border-b bg-muted/50">
               <th className="h-12 px-4 text-center align-middle font-medium w-12">
