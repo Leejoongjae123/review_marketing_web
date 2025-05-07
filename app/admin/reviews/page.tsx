@@ -35,8 +35,9 @@ export default function AdminReviewsPage() {
     
     const filtered = mockReviews.filter(review => {
       const matchesSearch = !searchTerm.trim() || 
-        (typeof review[searchCategory as keyof Review] === 'string' && 
-         review[searchCategory as keyof Review].toString().toLowerCase().includes(searchTerm.toLowerCase()));
+        (searchCategory in review && 
+         typeof review[searchCategory as keyof Review] === 'string' &&
+         (review[searchCategory as keyof Review] as string).toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesDate = (!startDate || new Date(review.createdAt) >= new Date(startDate)) &&
                          (!endDate || new Date(review.createdAt) <= new Date(endDate));
@@ -195,15 +196,12 @@ export default function AdminReviewsPage() {
                 />
               </th>
               <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">상태</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-32">제목</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-32">작성자</th>
               <th className="h-12 px-4 text-center align-middle font-medium w-32">제품명</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">옵션명</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">가격</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">배송비</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">판매자</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">참여자</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">기간</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">평점</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-32">작성일</th>
               <th className="h-12 px-4 text-center align-middle font-medium w-32">관리</th>
             </tr>
           </thead>
@@ -217,17 +215,16 @@ export default function AdminReviewsPage() {
                   />
                 </td>
                 <td className="p-4 text-center">{startIndex + index + 1}</td>
-                <td className="p-4 text-center">{review.platform}</td>
                 <td className="p-4 text-center">
-                  <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
+                  <span className={getStatusStyle(review.status)}>
+                    {getStatusText(review.status)}
+                  </span>
                 </td>
+                <td className="p-4 text-center">{review.title}</td>
+                <td className="p-4 text-center">{review.authorName}</td>
                 <td className="p-4 text-center">{review.productName}</td>
-                <td className="p-4 text-center">{review.optionName}</td>
-                <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
-                <td className="p-4 text-center">{review.shippingFee?.toLocaleString() ?? '0'}원</td>
-                <td className="p-4 text-center">{review.seller}</td>
-                <td className="p-4 text-center">{review.participants}</td>
-                <td className="p-4 text-center">{review.period}</td>
+                <td className="p-4 text-center">{review.rating}</td>
+                <td className="p-4 text-center">{new Date(review.createdAt).toLocaleDateString()}</td>
                 <td className="p-4 text-center">
                   <div className="flex justify-center gap-2">
                     <Button

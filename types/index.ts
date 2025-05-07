@@ -12,9 +12,16 @@ export interface User {
 // 리뷰 타입
 export type Review = {
   id: string;
+  title: string;
+  content: string;
+  rating: number;
+  status: "pending" | "approved" | "rejected";
+  authorId: string;
+  authorName: string;
+  productId: string;
+  productName: string;
   platform: string;
   imageUrl: string;
-  productName: string;
   optionName: string;
   price: number;
   shippingFee: number;
@@ -22,7 +29,8 @@ export type Review = {
   participants: number;
   period: string;
   createdAt: string;
-  status: "pending" | "approved" | "rejected";
+  updatedAt: string;
+  endDate?: string;
 };
 
 // 회원 이력 타입

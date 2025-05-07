@@ -75,8 +75,8 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
         seller: review.seller,
         participants: review.participants?.toString() || "",
         status: review.status || "pending",
-        startDate: review.startDate || "",
-        endDate: review.endDate || "",
+        startDate: (review as any).startDate || "",
+        endDate: (review as any).endDate || "",
       });
       // TODO: 기존 이미지 로드
     }
