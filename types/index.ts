@@ -37,14 +37,14 @@ export type Review = {
 // 회원 이력 타입
 export interface UserHistory {
   id: string;
-  name: string;
-  phone: string;
-  email: string;
-  eventAccount: string;
+  platform: string;
   reviewImage?: string;
-  timestamp: string;
-  eventName: string;
-  status: 'pending' | 'completed' | 'canceled';
+  productName: string;
+  optionName: string;
+  price: number;
+  shippingFee: number;
+  sellerLocation: string;
+  period: string;
 }
 
 // 참여 이력 타입

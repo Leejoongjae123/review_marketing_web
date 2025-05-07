@@ -46,7 +46,7 @@ export const providerMenuItems: MenuItem[] = [
 // 리뷰어 메뉴 아이템
 export const clientMenuItems: MenuItem[] = [
   {
-    title: "리뷰 목록",
+    title: "이벤트 관리",
     href: "/client/reviews",
     icon: "file-text",
   },
@@ -56,7 +56,7 @@ export const clientMenuItems: MenuItem[] = [
     icon: "log-in",
   },
   {
-    title: "참여 이력",
+    title: "응모 관리",
     href: "/client/participation",
     icon: "history",
   },

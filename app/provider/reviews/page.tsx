@@ -209,12 +209,6 @@ export default function ProviderReviewsPage() {
         <table className="w-full min-w-[800px]">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="h-12 px-4 text-center align-middle font-medium w-12">
-                <Checkbox
-                  checked={selectedReviews.size === paginatedReviews.length}
-                  onCheckedChange={handleSelectAll}
-                />
-              </th>
               <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
               <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
               <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
@@ -225,7 +219,6 @@ export default function ProviderReviewsPage() {
               <th className="h-12 px-4 text-center align-middle font-medium w-24">판매자</th>
               <th className="h-12 px-4 text-center align-middle font-medium w-24">참여자</th>
               <th className="h-12 px-4 text-center align-middle font-medium w-24">기간</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">관리</th>
             </tr>
           </thead>
           <tbody>
@@ -235,12 +228,6 @@ export default function ProviderReviewsPage() {
                 className="border-b cursor-pointer hover:bg-gray-50" 
                 onClick={() => handleViewReview(review.id)}
               >
-                <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
-                  <Checkbox
-                    checked={selectedReviews.has(review.id)}
-                    onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
-                  />
-                </td>
                 <td className="p-4 text-center">{startIndex + index + 1}</td>
                 <td className="p-4 text-center">{review.platform}</td>
                 <td className="p-4 text-center">
@@ -253,9 +240,6 @@ export default function ProviderReviewsPage() {
                 <td className="p-4 text-center">{review.seller}</td>
                 <td className="p-4 text-center">{review.participants}</td>
                 <td className="p-4 text-center">{review.period}</td>
-                <td className="p-4 text-center">
-                  조회만 가능
-                </td>
               </tr>
             ))}
           </tbody>

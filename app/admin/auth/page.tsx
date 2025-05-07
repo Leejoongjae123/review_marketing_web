@@ -15,7 +15,6 @@ export default function AdminAuthPage() {
         <Tabs defaultValue="login" className="w-full max-w-md h-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">로그인</TabsTrigger>
-            <TabsTrigger value="register">회원가입</TabsTrigger>
           </TabsList>
           
           <TabsContent value="login">

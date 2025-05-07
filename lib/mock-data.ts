@@ -172,59 +172,173 @@ export const mockUsers: User[] = [
 export const mockUserHistory: UserHistory[] = [
   {
     id: "hist1",
-    name: "김철수",
-    phone: "010-1234-5678",
-    email: "kim@example.com",
-    eventAccount: "event1@example.com",
+    platform: "쿠팡",
     reviewImage: "/noimage.jpg",
-    timestamp: "2023-05-15T09:00:00Z",
-    eventName: "스마트폰 A 리뷰 이벤트",
-    status: "completed"
+    productName: "스마트폰 A",
+    optionName: "128GB 블랙",
+    price: 899000,
+    shippingFee: 3000,
+    sellerLocation: "서울시 강남구",
+    period: "2023-05-01 ~ 2023-05-31"
   },
   {
     id: "hist2",
-    name: "이영희",
-    phone: "010-2345-6789",
-    email: "lee@example.com",
-    eventAccount: "event2@example.com",
+    platform: "11번가",
     reviewImage: "/noimage.jpg",
-    timestamp: "2023-05-16T14:00:00Z",
-    eventName: "노트북 B 리뷰 이벤트",
-    status: "completed"
+    productName: "노트북 B",
+    optionName: "i5 16GB 512GB",
+    price: 1299000,
+    shippingFee: 0,
+    sellerLocation: "서울시 서초구",
+    period: "2023-05-01 ~ 2023-05-31"
   },
   {
     id: "hist3",
-    name: "박지민",
-    phone: "010-3456-7890",
-    email: "park@example.com",
-    eventAccount: "event3@example.com",
+    platform: "G마켓",
     reviewImage: "/noimage.jpg",
-    timestamp: "2023-05-17T11:00:00Z",
-    eventName: "스마트폰 A 리뷰 이벤트",
-    status: "pending"
+    productName: "헤드폰 C",
+    optionName: "블루투스 5.0",
+    price: 89000,
+    shippingFee: 2500,
+    sellerLocation: "서울시 마포구",
+    period: "2023-05-01 ~ 2023-05-31"
   },
   {
     id: "hist4",
-    name: "최수진",
-    phone: "010-4567-8901",
-    email: "choi@example.com",
-    eventAccount: "event4@example.com",
+    platform: "쿠팡",
     reviewImage: "/noimage.jpg",
-    timestamp: "2023-05-18T16:00:00Z",
-    eventName: "노트북 B 리뷰 이벤트",
-    status: "canceled"
+    productName: "태블릿 D",
+    optionName: "WiFi 64GB",
+    price: 499000,
+    shippingFee: 0,
+    sellerLocation: "서울시 송파구",
+    period: "2023-05-01 ~ 2023-05-31"
   },
   {
     id: "hist5",
-    name: "정민준",
-    phone: "010-5678-9012",
-    email: "jung@example.com",
-    eventAccount: "event5@example.com",
+    platform: "11번가",
     reviewImage: "/noimage.jpg",
-    timestamp: "2023-05-19T10:00:00Z",
-    eventName: "스마트폰 A 리뷰 이벤트",
-    status: "pending"
+    productName: "스마트워치 E",
+    optionName: "GPS 블랙",
+    price: 299000,
+    shippingFee: 3000,
+    sellerLocation: "서울시 종로구",
+    period: "2023-05-01 ~ 2023-05-31"
+  }
+];
+
+// 새로운 사용자 이력 목업 데이터
+export const newMockUserHistory: UserHistory[] = [
+  {
+    id: "entry1",
+    platform: "네이버쇼핑",
+    reviewImage: "/noimage.jpg",
+    productName: "무선 이어폰 X",
+    optionName: "화이트",
+    price: 129000,
+    shippingFee: 0,
+    sellerLocation: "경기도 성남시",
+    period: "2023-10-01 ~ 2023-10-31"
   },
+  {
+    id: "entry2",
+    platform: "쿠팡",
+    reviewImage: "/noimage.jpg",
+    productName: "공기청정기 Y",
+    optionName: "19평형",
+    price: 359000,
+    shippingFee: 5000,
+    sellerLocation: "인천시 부평구",
+    period: "2023-10-01 ~ 2023-10-31"
+  },
+  {
+    id: "entry3",
+    platform: "옥션",
+    reviewImage: "/noimage.jpg",
+    productName: "블루투스 스피커 Z",
+    optionName: "프리미엄 에디션",
+    price: 89000,
+    shippingFee: 2500,
+    sellerLocation: "부산시 해운대구",
+    period: "2023-10-01 ~ 2023-10-31"
+  },
+  {
+    id: "entry4",
+    platform: "G마켓",
+    reviewImage: "/noimage.jpg",
+    productName: "스마트 체중계",
+    optionName: "블랙",
+    price: 45000,
+    shippingFee: 0,
+    sellerLocation: "서울시 강서구",
+    period: "2023-10-01 ~ 2023-10-31"
+  },
+  {
+    id: "entry5",
+    platform: "티몬",
+    reviewImage: "/noimage.jpg",
+    productName: "전기주전자",
+    optionName: "1.8L 스테인리스",
+    price: 38000,
+    shippingFee: 3000,
+    sellerLocation: "대구시 중구",
+    period: "2023-10-01 ~ 2023-10-31"
+  },
+  {
+    id: "entry6",
+    platform: "위메프",
+    reviewImage: "/noimage.jpg",
+    productName: "유선 마우스",
+    optionName: "게이밍",
+    price: 29000,
+    shippingFee: 2500,
+    sellerLocation: "경기도 수원시",
+    period: "2023-10-01 ~ 2023-10-31"
+  },
+  {
+    id: "entry7",
+    platform: "네이버쇼핑",
+    reviewImage: "/noimage.jpg",
+    productName: "기계식 키보드",
+    optionName: "청축",
+    price: 129000,
+    shippingFee: 0,
+    sellerLocation: "서울시 용산구",
+    period: "2023-10-01 ~ 2023-10-31"
+  },
+  {
+    id: "entry8",
+    platform: "쿠팡",
+    reviewImage: "/noimage.jpg",
+    productName: "LED 모니터",
+    optionName: "27인치 QHD",
+    price: 289000,
+    shippingFee: 0,
+    sellerLocation: "경기도 화성시",
+    period: "2023-10-01 ~ 2023-10-31"
+  },
+  {
+    id: "entry9",
+    platform: "11번가",
+    reviewImage: "/noimage.jpg",
+    productName: "무선 충전기",
+    optionName: "고속 충전",
+    price: 35000,
+    shippingFee: 2500,
+    sellerLocation: "서울시 강남구",
+    period: "2023-10-01 ~ 2023-10-31"
+  },
+  {
+    id: "entry10",
+    platform: "SSG닷컴",
+    reviewImage: "/noimage.jpg",
+    productName: "스마트 전구",
+    optionName: "RGB 멀티컬러",
+    price: 25000,
+    shippingFee: 0,
+    sellerLocation: "경기도 용인시",
+    period: "2023-10-01 ~ 2023-10-31"
+  }
 ];
 
 // 참여 이력 목 데이터

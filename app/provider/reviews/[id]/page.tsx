@@ -334,59 +334,56 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => {
-        if (!open) {
-          setIsModalOpen(false);
-          setSelectedParticipant(null);
-        }
-      }}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>리뷰 인증 정보</DialogTitle>
+            <DialogTitle>리뷰 보기 - {selectedParticipant?.name}</DialogTitle>
           </DialogHeader>
-          {selectedParticipant && (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <Label>이름</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.name}</p>
+          <div className="space-y-4">
+            {selectedParticipant && (
+              <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg">
+                <div className="space-y-2">
+                  <Label className="font-semibold">ID</Label>
+                  <p>{selectedParticipant.id}</p>
                 </div>
-                <div>
-                  <Label>연락처</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.phone}</p>
+                <div className="space-y-2">
+                  <Label className="font-semibold">이름</Label>
+                  <p>{selectedParticipant.name}</p>
                 </div>
-                <div>
-                  <Label>로그인계정</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.loginAccount}</p>
+                <div className="space-y-2">
+                  <Label className="font-semibold">전화번호</Label>
+                  <p>{selectedParticipant.phone}</p>
                 </div>
-                <div>
-                  <Label>이벤트계정</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.eventAccount}</p>
+                <div className="space-y-2">
+                  <Label className="font-semibold">로그인 계정</Label>
+                  <p>{selectedParticipant.loginAccount}</p>
                 </div>
-                <div>
-                  <Label>닉네임</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.nickname}</p>
+                <div className="space-y-2">
+                  <Label className="font-semibold">이벤트 계정</Label>
+                  <p>{selectedParticipant.eventAccount}</p>
                 </div>
-                <div>
-                  <Label>리뷰 인증 이미지</Label>
-                  {selectedParticipant.reviewImage && (
-                    <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
-                      <Image
-                        src={selectedParticipant.reviewImage}
-                        alt="리뷰 인증 이미지"
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
-                        }}
-                      />
-                    </div>
-                  )}
+                <div className="space-y-2">
+                  <Label className="font-semibold">닉네임</Label>
+                  <p>{selectedParticipant.nickname}</p>
                 </div>
               </div>
+            )}
+            {selectedParticipant?.reviewImage && (
+              <div className="flex justify-center">
+                <div className="relative w-full h-[500px]">
+                  <Image
+                    src={selectedParticipant.reviewImage}
+                    alt="리뷰 이미지"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+            )}
+            <div className="border rounded-lg p-4 bg-muted/50">
+              <p className="text-sm text-muted-foreground">제품에 대한 리뷰 내용이 표시됩니다.</p>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

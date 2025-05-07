@@ -1,10 +1,17 @@
-'use client'
+"use client";
 import React, { useState } from "react";
-import { mockParticipations } from "@/lib/mock-data";
-import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { mockUserHistory } from "@/lib/mock-data";
+import { Card, CardContent } from "@/components/ui/card";
+import { UserHistory } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Trash2,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,73 +19,124 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface Participation {
-  id: string;
-  reviewId: string;
-  reviewTitle: string;
-  reward: string;
-  status: "completed" | "canceled" | "pending";
-  createdAt: string;
-}
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import Image from "next/image";
 
 export default function ClientParticipationPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchCategory, setSearchCategory] = useState("reviewTitle");
-  const [filteredParticipations, setFilteredParticipations] = useState(mockParticipations);
+  const [searchCategory, setSearchCategory] = useState("productName");
+  const [filteredHistory, setFilteredHistory] = useState(mockUserHistory);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [selectedHistory, setSelectedHistory] = useState<UserHistory | null>(
+    null
+  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
-      setFilteredParticipations(mockParticipations);
+      setFilteredHistory(mockUserHistory);
       return;
     }
-    
-    const filtered = mockParticipations.filter(participation => {
-      const value = participation[searchCategory as keyof Participation];
-      if (typeof value === 'string') {
+
+    const filtered = mockUserHistory.filter((history) => {
+      const value = history[searchCategory as keyof UserHistory];
+      if (typeof value === "string") {
         return value.toLowerCase().includes(searchTerm.toLowerCase());
       }
       return false;
     });
-    
-    setFilteredParticipations(filtered);
-    setCurrentPage(1); // 검색 시 첫 페이지로 돌아가기
+
+    setFilteredHistory(filtered);
+    setCurrentPage(1);
   };
 
-  // 페이지네이션 계산
-  const totalPages = Math.ceil(filteredParticipations.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedParticipations = filteredParticipations.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedHistory = filteredHistory.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
-  const getStatusStyle = (status: Participation["status"]) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-500 text-white px-2 py-1 rounded-md";
-      case "canceled":
-        return "bg-red-500 text-white px-2 py-1 rounded-md";
-      default:
-        return "bg-yellow-500 text-white px-2 py-1 rounded-md";
-    }
+  const handleRowClick = (history: UserHistory) => {
+    setSelectedHistory(history);
+    setIsModalOpen(true);
   };
 
-  const getStatusText = (status: Participation["status"]) => {
-    switch (status) {
-      case "completed":
-        return "완료";
-      case "canceled":
-        return "취소됨";
-      default:
-        return "대기중";
+  const handleDownloadExcel = () => {
+    // 엑셀 다운로드 로직 구현
+    const headers = [
+      "번호",
+      "플랫폼",
+      "제품명",
+      "옵션명",
+      "가격",
+      "배송비",
+      "판매지",
+      "기간"
+    ];
+    const data = filteredHistory.map((history) => [
+      history.id,
+      history.platform,
+      history.productName,
+      history.optionName,
+      history.price?.toLocaleString() + "원",
+      history.shippingFee?.toLocaleString() + "원",
+      history.sellerLocation,
+      history.period
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...data.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `제품목록_${new Date().toLocaleDateString()}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // 모달이 열리는 것을 방지
+    if (window.confirm("정말로 이 항목을 삭제하시겠습니까?")) {
+      setFilteredHistory((prev) => prev.filter((item) => item.id !== id));
     }
   };
 
   return (
     <div className="space-y-4 w-full h-full">
-      <h1 className="text-2xl font-bold tracking-tight">참여 이력</h1>
-      <p className="text-muted-foreground">내가 참여한 리뷰 활동 이력을 확인합니다.</p>
-      
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">응모 관리</h1>
+          <p className="text-muted-foreground">
+            응모 이력을 확인합니다.
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="w-full md:w-64">
           <Select value={searchCategory} onValueChange={setSearchCategory}>
@@ -86,9 +144,10 @@ export default function ClientParticipationPage() {
               <SelectValue placeholder="검색 카테고리" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="id">참여 ID</SelectItem>
-              <SelectItem value="reviewId">리뷰 ID</SelectItem>
-              <SelectItem value="reviewTitle">리뷰 제목</SelectItem>
+              <SelectItem value="productName">제품명</SelectItem>
+              <SelectItem value="platform">플랫폼</SelectItem>
+              <SelectItem value="optionName">옵션명</SelectItem>
+              <SelectItem value="sellerLocation">판매지</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -105,53 +164,95 @@ export default function ClientParticipationPage() {
           검색
         </Button>
       </div>
-      
-      <div className="rounded-md border overflow-x-auto">
-        <table className="w-full min-w-[800px]">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="h-12 px-4 text-left align-middle font-medium">참여 ID</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">리뷰 제목</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">리워드</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">상태</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">참여일</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedParticipations.map((participation) => (
-              <tr key={participation.id} className="border-b">
-                <td className="p-4">{participation.id}</td>
-                <td className="p-4">{participation.reviewTitle}</td>
-                <td className="p-4">{participation.reward}</td>
-                <td className="p-4">
-                  <span className={getStatusStyle(participation.status)}>
-                    {getStatusText(participation.status)}
-                  </span>
-                </td>
-                <td className="p-4">{new Date(participation.createdAt).toLocaleDateString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex justify-end items-center gap-4">
+        <Button onClick={handleDownloadExcel} variant="outline">
+          <Download className="h-4 w-4 mr-2" />
+          엑셀 다운로드
+        </Button>
+        <Select
+          value={itemsPerPage.toString()}
+          onValueChange={(value) => {
+            setItemsPerPage(Number(value));
+            setCurrentPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[120px]">
+            <SelectValue placeholder="페이지당 항목 수" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10개씩 보기</SelectItem>
+            <SelectItem value="50">50개씩 보기</SelectItem>
+            <SelectItem value="100">100개씩 보기</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-      
-      {/* 페이지네이션 */}
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[80px]">번호</TableHead>
+              <TableHead className="w-[120px]">플랫폼</TableHead>
+              <TableHead className="w-[120px]">이미지</TableHead>
+              <TableHead className="w-[200px]">제품명</TableHead>
+              <TableHead className="w-[150px]">옵션명</TableHead>
+              <TableHead className="w-[120px]">가격</TableHead>
+              <TableHead className="w-[100px]">배송비</TableHead>
+              <TableHead className="w-[150px]">판매지</TableHead>
+              <TableHead className="w-[150px]">기간</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedHistory.map((history) => (
+              <TableRow
+                key={history.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => handleRowClick(history)}
+              >
+                <TableCell>{history.id}</TableCell>
+                <TableCell>{history.platform}</TableCell>
+                <TableCell>
+                  {history.reviewImage ? (
+                    <div className="relative w-10 h-10 rounded-md overflow-hidden">
+                      <Image
+                        src={history.reviewImage}
+                        alt="제품 이미지"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">없음</span>
+                  )}
+                </TableCell>
+                <TableCell>{history.productName}</TableCell>
+                <TableCell>{history.optionName}</TableCell>
+                <TableCell>{history.price?.toLocaleString()}원</TableCell>
+                <TableCell>{history.shippingFee?.toLocaleString()}원</TableCell>
+                <TableCell>{history.sellerLocation}</TableCell>
+                <TableCell>{history.period}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          전체 {filteredParticipations.length}개 항목 중 {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredParticipations.length)}개 표시
+          전체 {filteredHistory.length}개 항목 중 {startIndex + 1}-
+          {Math.min(startIndex + itemsPerPage, filteredHistory.length)}개 표시
         </div>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
           >
             <ChevronLeft className="h-4 w-4" />
             이전
           </Button>
           <div className="flex items-center">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
                 variant={currentPage === page ? "default" : "outline"}
@@ -166,7 +267,9 @@ export default function ClientParticipationPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
             disabled={currentPage === totalPages}
           >
             다음
@@ -174,6 +277,78 @@ export default function ClientParticipationPage() {
           </Button>
         </div>
       </div>
+
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsModalOpen(false);
+            setSelectedHistory(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>응모 상세 정보</DialogTitle>
+          </DialogHeader>
+          {selectedHistory && (
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <Label>플랫폼</Label>
+                  <p className="text-sm mt-1">{selectedHistory.platform}</p>
+                </div>
+                <div>
+                  <Label>제품명</Label>
+                  <p className="text-sm mt-1">{selectedHistory.productName}</p>
+                </div>
+                <div>
+                  <Label>옵션명</Label>
+                  <p className="text-sm mt-1">{selectedHistory.optionName}</p>
+                </div>
+                <div>
+                  <Label>가격</Label>
+                  <p className="text-sm mt-1">{selectedHistory.price?.toLocaleString()}원</p>
+                </div>
+                <div>
+                  <Label>배송비</Label>
+                  <p className="text-sm mt-1">{selectedHistory.shippingFee?.toLocaleString()}원</p>
+                </div>
+                <div>
+                  <Label>판매지</Label>
+                  <p className="text-sm mt-1">{selectedHistory.sellerLocation}</p>
+                </div>
+                <div>
+                  <Label>기간</Label>
+                  <p className="text-sm mt-1">{selectedHistory.period}</p>
+                </div>
+                <div>
+                  <Label>제품 이미지</Label>
+                  {selectedHistory.reviewImage ? (
+                    <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
+                      <Image
+                        src={selectedHistory.reviewImage}
+                        alt="제품 이미지"
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src =
+                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      제품 이미지가 없습니다.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

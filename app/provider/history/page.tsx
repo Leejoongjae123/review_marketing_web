@@ -1,8 +1,7 @@
 'use client'
 import React, { useState } from "react";
-import { mockUserHistory } from "@/lib/mock-data";
+import { newMockUserHistory } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
-import { UserHistory } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,10 +35,39 @@ import {
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 
+// 페이지 컴포넌트에서 필요한 UserHistory 타입 선언
+interface UserHistory {
+  id: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  eventAccount?: string;
+  eventName?: string;
+  status?: "completed" | "pending" | "canceled";
+  timestamp?: string;
+  reviewImage?: string;
+  platform: string;
+  productName: string;
+  optionName: string;
+  price: number;
+  shippingFee: number;
+  sellerLocation: string;
+  period: string;
+}
+
 export default function ProviderHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchCategory, setSearchCategory] = useState("name");
-  const [filteredHistory, setFilteredHistory] = useState(mockUserHistory);
+  const [filteredHistory, setFilteredHistory] = useState<UserHistory[]>(newMockUserHistory.map(item => ({
+    ...item,
+    name: "테스트 사용자",
+    phone: "010-1234-5678",
+    email: "user@example.com",
+    eventAccount: "instagram_user",
+    eventName: "인스타그램 리뷰 이벤트",
+    status: Math.random() > 0.6 ? "completed" : Math.random() > 0.3 ? "pending" : "canceled",
+    timestamp: new Date().toISOString()
+  })));
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedHistory, setSelectedHistory] = useState<UserHistory | null>(
     null
@@ -49,13 +77,29 @@ export default function ProviderHistoryPage() {
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
-      setFilteredHistory(mockUserHistory);
+      setFilteredHistory(newMockUserHistory.map(item => ({
+        ...item,
+        name: "테스트 사용자",
+        phone: "010-1234-5678",
+        email: "user@example.com",
+        eventAccount: "instagram_user",
+        eventName: "인스타그램 리뷰 이벤트",
+        status: Math.random() > 0.6 ? "completed" : Math.random() > 0.3 ? "pending" : "canceled",
+        timestamp: new Date().toISOString()
+      })));
       return;
     }
 
-    const filtered = mockUserHistory.filter((history) => {
-      const value = history[searchCategory as keyof UserHistory];
-      if (typeof value === "string") {
+    const filtered = filteredHistory.filter((history) => {
+      const searchCategories: Record<string, string | undefined> = {
+        name: history.name,
+        phone: history.phone,
+        email: history.email,
+        eventAccount: history.eventAccount
+      };
+      
+      const value = searchCategories[searchCategory];
+      if (value && typeof value === "string") {
         return value.toLowerCase().includes(searchTerm.toLowerCase());
       }
       return false;
@@ -91,17 +135,17 @@ export default function ProviderHistoryPage() {
     ];
     const data = filteredHistory.map((history) => [
       history.id,
-      history.name,
-      history.phone,
-      history.email,
-      history.eventAccount,
-      history.eventName,
+      history.name || "",
+      history.phone || "",
+      history.email || "",
+      history.eventAccount || "",
+      history.eventName || "",
       history.status === "completed"
         ? "완료"
         : history.status === "pending"
           ? "대기중"
           : "취소",
-      new Date(history.timestamp).toLocaleString(),
+      history.timestamp ? new Date(history.timestamp).toLocaleString() : "",
     ]);
 
     const csvContent = [
