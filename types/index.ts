@@ -5,6 +5,7 @@ export interface User {
   email: string;
   phone?: string;
   role: 'admin' | 'provider' | 'client';
+  status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
 }
@@ -36,11 +37,14 @@ export type Review = {
 // 회원 이력 타입
 export interface UserHistory {
   id: string;
-  userId: string;
-  userName: string;
-  action: string;
-  details: string;
+  name: string;
+  phone: string;
+  email: string;
+  eventAccount: string;
+  reviewImage?: string;
   timestamp: string;
+  eventName: string;
+  status: 'pending' | 'completed' | 'canceled';
 }
 
 // 참여 이력 타입

@@ -15,6 +15,16 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminReviewsPage() {
   const router = useRouter();
@@ -26,6 +36,8 @@ export default function AdminReviewsPage() {
   const [filteredReviews, setFilteredReviews] = useState(mockReviews);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedReviews, setSelectedReviews] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null);
 
   const handleSearch = () => {
     if (!searchTerm.trim() && !startDate && !endDate) {
@@ -101,9 +113,16 @@ export default function AdminReviewsPage() {
   };
 
   const handleDeleteReview = (id: string) => {
-    if (window.confirm('정말로 이 제품을 삭제하시겠습니까?')) {
+    setReviewToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (reviewToDelete) {
       // TODO: API 연동
-      console.log('제품 삭제:', id);
+      console.log('제품 삭제:', reviewToDelete);
+      setDeleteDialogOpen(false);
+      setReviewToDelete(null);
     }
   };
 
@@ -117,8 +136,8 @@ export default function AdminReviewsPage() {
 
   return (
     <div className="space-y-4 w-full h-full">
-      <h1 className="text-2xl font-bold tracking-tight">리뷰 목록 관리</h1>
-      <p className="text-muted-foreground">플랫폼에 등록된 모든 리뷰를 관리합니다.</p>
+      <h1 className="text-2xl font-bold tracking-tight">이벤트 목록</h1>
+      <p className="text-muted-foreground">플랫폼에 등록된 모든 이벤트를 관리합니다.</p>
       
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="w-full md:w-64">
@@ -196,12 +215,15 @@ export default function AdminReviewsPage() {
                 />
               </th>
               <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">상태</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">제목</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">작성자</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
               <th className="h-12 px-4 text-center align-middle font-medium w-32">제품명</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">평점</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">작성일</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-32">옵션명</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">가격</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">배송비</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">판매자</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">참여자</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">기간</th>
               <th className="h-12 px-4 text-center align-middle font-medium w-32">관리</th>
             </tr>
           </thead>
@@ -215,16 +237,17 @@ export default function AdminReviewsPage() {
                   />
                 </td>
                 <td className="p-4 text-center">{startIndex + index + 1}</td>
+                <td className="p-4 text-center">{review.platform}</td>
                 <td className="p-4 text-center">
-                  <span className={getStatusStyle(review.status)}>
-                    {getStatusText(review.status)}
-                  </span>
+                  <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
                 </td>
-                <td className="p-4 text-center">{review.title}</td>
-                <td className="p-4 text-center">{review.authorName}</td>
                 <td className="p-4 text-center">{review.productName}</td>
-                <td className="p-4 text-center">{review.rating}</td>
-                <td className="p-4 text-center">{new Date(review.createdAt).toLocaleDateString()}</td>
+                <td className="p-4 text-center">{review.optionName}</td>
+                <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
+                <td className="p-4 text-center">{review.shippingFee?.toLocaleString() ?? '0'}원</td>
+                <td className="p-4 text-center">{review.seller}</td>
+                <td className="p-4 text-center">{review.participants}</td>
+                <td className="p-4 text-center">{review.period}</td>
                 <td className="p-4 text-center">
                   <div className="flex justify-center gap-2">
                     <Button
@@ -288,6 +311,23 @@ export default function AdminReviewsPage() {
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>리뷰 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말로 이 리뷰를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 } 

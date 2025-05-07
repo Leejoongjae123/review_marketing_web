@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,40 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Plus, X, Eye } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import Image from "next/image";
-import { mockReviews } from "@/lib/mock-data";
 
-// 참여자 타입 정의
-interface Participant {
-  id: number;
-  name: string;
-  phone: string;
-  loginAccount: string;
-  eventAccount: string;
-  nickname: string;
-  reviewImage?: string;
-}
-
-export default function EditReviewPage({ params }: { params: Promise<{ id: string }> }) {
+export default function AddReviewPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const unwrappedParams = React.use(params);
   const [formData, setFormData] = useState({
     platform: "",
     productName: "",
@@ -58,54 +30,12 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
     endDate: "",
   });
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  useEffect(() => {
-    // TODO: API 연동
-    const review = mockReviews.find(r => r.id === unwrappedParams.id);
-    if (review) {
-      setFormData({
-        platform: review.platform,
-        productName: review.productName,
-        optionName: review.optionName,
-        price: review.price?.toString() || "",
-        shippingFee: review.shippingFee?.toString() || "",
-        seller: review.seller,
-        participants: review.participants?.toString() || "",
-        status: review.status || "pending",
-        startDate: (review as any).startDate || "",
-        endDate: (review as any).endDate || "",
-      });
-      // TODO: 기존 이미지 로드
-    }
-
-    // 임시 참여자 데이터
-    setParticipants([
-      {
-        id: 1,
-        name: "홍길동",
-        phone: "010-1234-5678",
-        loginAccount: "user1@example.com",
-        eventAccount: "event1@example.com",
-        nickname: "길동이",
-        reviewImage: "/noimage.jpg"
-      },
-      // 더 많은 참여자 데이터 추가 가능
-    ]);
-  }, [unwrappedParams.id]);
-
-  const handleViewReview = (participant: Participant) => {
-    setSelectedParticipant(participant);
-    setIsModalOpen(true);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: API 연동
-    console.log('제품 수정:', { ...formData, images });
-    router.push('/admin/reviews');
+    console.log('제품 등록:', { ...formData, images });
+    router.push('/provider/reviews');
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,7 +63,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">제품 수정</h1>
+      <h1 className="text-2xl font-bold">제품 등록</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6 w-full">
         <div className="space-y-4">
@@ -146,7 +76,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             multiple
             onChange={handleImageChange}
           />
-          <div className="grid grid-cols-6 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             {images.map((image, index) => (
               <div key={index} className="relative group">
                 <div className="aspect-square relative rounded-lg overflow-hidden border">
@@ -271,6 +201,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               value={formData.participants}
               onChange={(e) => setFormData(prev => ({ ...prev, participants: e.target.value }))}
               placeholder="참여자 수를 입력하세요"
+              className="text-center"
             />
           </div>
 
@@ -295,54 +226,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        <Separator className="my-6" />
-
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">참여 인원</h2>
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">번호</TableHead>
-                  <TableHead className="w-[120px]">이름</TableHead>
-                  <TableHead className="w-[150px]">연락처</TableHead>
-                  <TableHead className="w-[200px]">로그인계정</TableHead>
-                  <TableHead className="w-[200px]">이벤트계정</TableHead>
-                  <TableHead className="w-[120px]">닉네임</TableHead>
-                  <TableHead className="w-[100px]">리뷰인증</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {participants.map((participant) => (
-                  <TableRow key={participant.id}>
-                    <TableCell>{participant.id}</TableCell>
-                    <TableCell>{participant.name}</TableCell>
-                    <TableCell>{participant.phone}</TableCell>
-                    <TableCell>{participant.loginAccount}</TableCell>
-                    <TableCell>{participant.eventAccount}</TableCell>
-                    <TableCell>{participant.nickname}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleViewReview(participant);
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        보기
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-4">
+        <div className="flex justify-center gap-4">
           <Button
             type="button"
             variant="outline"
@@ -351,66 +235,10 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             취소
           </Button>
           <Button type="submit">
-            수정
+            등록
           </Button>
         </div>
       </form>
-
-      <Dialog open={isModalOpen} onOpenChange={(open) => {
-        if (!open) {
-          setIsModalOpen(false);
-          setSelectedParticipant(null);
-        }
-      }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>리뷰 인증 정보</DialogTitle>
-          </DialogHeader>
-          {selectedParticipant && (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <Label>이름</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.name}</p>
-                </div>
-                <div>
-                  <Label>연락처</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.phone}</p>
-                </div>
-                <div>
-                  <Label>로그인계정</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.loginAccount}</p>
-                </div>
-                <div>
-                  <Label>이벤트계정</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.eventAccount}</p>
-                </div>
-                <div>
-                  <Label>닉네임</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.nickname}</p>
-                </div>
-                <div>
-                  <Label>리뷰 인증 이미지</Label>
-                  {selectedParticipant.reviewImage && (
-                    <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
-                      <Image
-                        src={selectedParticipant.reviewImage}
-                        alt="리뷰 인증 이미지"
-                        fill
-                        className="object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 } 

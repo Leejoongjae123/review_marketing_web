@@ -30,6 +30,14 @@ export default function AdminMembersPage() {
     );
   };
 
+  const handleStatusChange = (userId: string, newStatus: "active" | "inactive") => {
+    setFilteredUsers((prevUsers) =>
+      prevUsers.map((user) =>
+        user.id === userId ? { ...user, status: newStatus } : user
+      )
+    );
+  };
+
   const handleSearch = () => {
     if (!searchTerm.trim()) {
       setFilteredUsers(mockUsers);
@@ -105,50 +113,50 @@ export default function AdminMembersPage() {
           <Search className="h-4 w-4 mr-2" />
           검색
         </Button>
-        <div className="w-32">
-          <Select
-            value={itemsPerPage.toString()}
-            onValueChange={(value) => {
-              setItemsPerPage(Number(value));
-              setCurrentPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="표시 개수" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10개씩 보기</SelectItem>
-              <SelectItem value="50">50개씩 보기</SelectItem>
-              <SelectItem value="100">100개씩 보기</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
       </div>
-      <div className="flex gap-2 mb-4">
-        <Button
-          variant={selectedRole === "all" ? "default" : "outline"}
-          onClick={() => setSelectedRole("all")}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-2">
+          <Button
+            variant={selectedRole === "all" ? "default" : "outline"}
+            onClick={() => setSelectedRole("all")}
+          >
+            전체 ({mockUsers.length})
+          </Button>
+          <Button
+            variant={selectedRole === "admin" ? "default" : "outline"}
+            onClick={() => setSelectedRole("admin")}
+          >
+            관리자 ({mockUsers.filter((user) => user.role === "admin").length})
+          </Button>
+          <Button
+            variant={selectedRole === "provider" ? "default" : "outline"}
+            onClick={() => setSelectedRole("provider")}
+          >
+            광고주 ({mockUsers.filter((user) => user.role === "provider").length})
+          </Button>
+          <Button
+            variant={selectedRole === "client" ? "default" : "outline"}
+            onClick={() => setSelectedRole("client")}
+          >
+            리뷰어 ({mockUsers.filter((user) => user.role === "client").length})
+          </Button>
+        </div>
+        <Select
+          value={itemsPerPage.toString()}
+          onValueChange={(value) => {
+            setItemsPerPage(Number(value));
+            setCurrentPage(1);
+          }}
         >
-          전체 ({mockUsers.length})
-        </Button>
-        <Button
-          variant={selectedRole === "admin" ? "default" : "outline"}
-          onClick={() => setSelectedRole("admin")}
-        >
-          관리자 ({mockUsers.filter((user) => user.role === "admin").length})
-        </Button>
-        <Button
-          variant={selectedRole === "provider" ? "default" : "outline"}
-          onClick={() => setSelectedRole("provider")}
-        >
-          광고주 ({mockUsers.filter((user) => user.role === "provider").length})
-        </Button>
-        <Button
-          variant={selectedRole === "client" ? "default" : "outline"}
-          onClick={() => setSelectedRole("client")}
-        >
-          리뷰어 ({mockUsers.filter((user) => user.role === "client").length})
-        </Button>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue placeholder="표시 개수" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10개씩 보기</SelectItem>
+            <SelectItem value="50">50개씩 보기</SelectItem>
+            <SelectItem value="100">100개씩 보기</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div className="rounded-md border overflow-x-auto">
         <table className="w-full min-w-[800px]">
@@ -168,6 +176,9 @@ export default function AdminMembersPage() {
               </th>
               <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
                 계정권한
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+                계정상태
               </th>
             </tr>
           </thead>
@@ -192,6 +203,24 @@ export default function AdminMembersPage() {
                       <SelectItem value="admin">관리자</SelectItem>
                       <SelectItem value="provider">광고주</SelectItem>
                       <SelectItem value="client">리뷰어</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </td>
+                <td className="p-4 text-center">
+                  <Select
+                    value={user.status || "active"}
+                    onValueChange={(value) =>
+                      handleStatusChange(user.id, value as "active" | "inactive")
+                    }
+                  >
+                    <SelectTrigger className="w-[120px] mx-auto">
+                      <SelectValue>
+                        {user.status === "inactive" ? "비활성화" : "활성화"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">활성화</SelectItem>
+                      <SelectItem value="inactive">비활성화</SelectItem>
                     </SelectContent>
                   </Select>
                 </td>

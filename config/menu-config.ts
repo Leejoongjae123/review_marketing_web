@@ -3,7 +3,7 @@ import { MenuItem } from "@/components/layout/sidebar";
 // 관리자 메뉴 아이템
 export const adminMenuItems: MenuItem[] = [
   {
-    title: "리뷰 목록",
+    title: "이벤트 관리",
     href: "/admin/reviews",
     icon: "file-text",
   },
@@ -18,7 +18,7 @@ export const adminMenuItems: MenuItem[] = [
     icon: "log-in",
   },
   {
-    title: "회원 이력 검색",
+    title: "응모 관리",
     href: "/admin/history",
     icon: "history",
   },
@@ -27,7 +27,7 @@ export const adminMenuItems: MenuItem[] = [
 // 광고주 메뉴 아이템
 export const providerMenuItems: MenuItem[] = [
   {
-    title: "리뷰 목록",
+    title: "이벤트 관리",
     href: "/provider/reviews",
     icon: "file-text",
   },
@@ -37,7 +37,7 @@ export const providerMenuItems: MenuItem[] = [
     icon: "log-in",
   },
   {
-    title: "회원 이력 검색",
+    title: "응모 관리",
     href: "/provider/history",
     icon: "history",
   },

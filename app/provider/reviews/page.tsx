@@ -1,11 +1,11 @@
 'use client'
 import React, { useState } from "react";
 import { mockReviews } from "@/lib/mock-data";
-import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Review } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Download, Plus, Edit, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -13,36 +13,58 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ProviderReviewsPage() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchCategory, setSearchCategory] = useState("title");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [pageSize, setPageSize] = useState(10);
   const [filteredReviews, setFilteredReviews] = useState(mockReviews);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [selectedReviews, setSelectedReviews] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null);
 
   const handleSearch = () => {
-    if (!searchTerm.trim()) {
+    if (!searchTerm.trim() && !startDate && !endDate) {
       setFilteredReviews(mockReviews);
       return;
     }
     
     const filtered = mockReviews.filter(review => {
-      const value = review[searchCategory as keyof Review];
-      if (typeof value === 'string') {
-        return value.toLowerCase().includes(searchTerm.toLowerCase());
-      }
-      return false;
+      const matchesSearch = !searchTerm.trim() || 
+        (searchCategory in review && 
+         typeof review[searchCategory as keyof Review] === 'string' &&
+         (review[searchCategory as keyof Review] as string).toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesDate = (!startDate || new Date(review.createdAt) >= new Date(startDate)) &&
+                         (!endDate || new Date(review.createdAt) <= new Date(endDate));
+      
+      return matchesSearch && matchesDate;
     });
     
     setFilteredReviews(filtered);
-    setCurrentPage(1); // 검색 시 첫 페이지로 돌아가기
+    setCurrentPage(1);
   };
 
   // 페이지네이션 계산
-  const totalPages = Math.ceil(filteredReviews.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedReviews = filteredReviews.slice(startIndex, startIndex + itemsPerPage);
+  const totalPages = Math.ceil(filteredReviews.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedReviews = filteredReviews.slice(startIndex, startIndex + pageSize);
 
   const getStatusStyle = (status: Review["status"]) => {
     switch (status) {
@@ -66,10 +88,60 @@ export default function ProviderReviewsPage() {
     }
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = paginatedReviews.map(review => review.id);
+      setSelectedReviews(new Set(allIds));
+    } else {
+      setSelectedReviews(new Set());
+    }
+  };
+
+  const handleSelectReview = (reviewId: string, checked: boolean) => {
+    const newSelected = new Set(selectedReviews);
+    if (checked) {
+      newSelected.add(reviewId);
+    } else {
+      newSelected.delete(reviewId);
+    }
+    setSelectedReviews(newSelected);
+  };
+
+  const handleExcelDownload = () => {
+    // 엑셀 다운로드 로직 구현
+    console.log('엑셀 다운로드');
+  };
+
+  const handleDeleteReview = (id: string) => {
+    setReviewToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (reviewToDelete) {
+      // TODO: API 연동
+      console.log('제품 삭제:', reviewToDelete);
+      setDeleteDialogOpen(false);
+      setReviewToDelete(null);
+    }
+  };
+
+  const handleAddProduct = () => {
+    router.push('/provider/reviews/add');
+  };
+
+  const handleEditProduct = (id: string) => {
+    router.push(`/provider/reviews/${id}`);
+  };
+
+  const handleViewReview = (id: string) => {
+    router.push(`/provider/reviews/${id}`);
+  };
+
   return (
     <div className="space-y-4 w-full h-full">
-      <h1 className="text-2xl font-bold tracking-tight">리뷰 목록</h1>
-      <p className="text-muted-foreground">등록된 리뷰를 확인합니다.</p>
+      <h1 className="text-2xl font-bold tracking-tight">이벤트 관리</h1>
+      <p className="text-muted-foreground">플랫폼에 등록된 모든 이벤트를 관리합니다.</p>
       
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="w-full md:w-64">
@@ -79,8 +151,8 @@ export default function ProviderReviewsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="title">제목</SelectItem>
-              <SelectItem value="authorName">작성자</SelectItem>
               <SelectItem value="productName">제품</SelectItem>
+              <SelectItem value="authorName">작성자</SelectItem>
               <SelectItem value="content">내용</SelectItem>
             </SelectContent>
           </Select>
@@ -93,37 +165,97 @@ export default function ProviderReviewsPage() {
             className="w-full"
           />
         </div>
+        <div className="flex gap-2">
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full"
+            placeholder="시작일"
+          />
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full"
+            placeholder="종료일"
+          />
+        </div>
         <Button onClick={handleSearch}>
           <Search className="h-4 w-4 mr-2" />
           검색
         </Button>
       </div>
       
+      <div className="flex justify-end gap-2 mb-4">
+        <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="페이지 크기" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10개</SelectItem>
+            <SelectItem value="50">50개</SelectItem>
+            <SelectItem value="100">100개</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={handleExcelDownload}>
+          <Download className="h-4 w-4 mr-2" />
+          엑셀 다운로드
+        </Button>
+        
+      </div>
+
       <div className="rounded-md border overflow-x-auto">
         <table className="w-full min-w-[800px]">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="h-12 px-4 text-left align-middle font-medium">제목</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">작성자</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">제품</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">평점</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">상태</th>
-              <th className="h-12 px-4 text-left align-middle font-medium">작성일</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-12">
+                <Checkbox
+                  checked={selectedReviews.size === paginatedReviews.length}
+                  onCheckedChange={handleSelectAll}
+                />
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-32">제품명</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-32">옵션명</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">가격</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">배송비</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">판매자</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">참여자</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-24">기간</th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-32">관리</th>
             </tr>
           </thead>
           <tbody>
-            {paginatedReviews.map((review) => (
-              <tr key={review.id} className="border-b">
-                <td className="p-4">{review.title}</td>
-                <td className="p-4">{review.authorName}</td>
-                <td className="p-4">{review.productName}</td>
-                <td className="p-4">{review.rating}</td>
-                <td className="p-4">
-                  <span className={getStatusStyle(review.status)}>
-                    {getStatusText(review.status)}
-                  </span>
+            {paginatedReviews.map((review, index) => (
+              <tr 
+                key={review.id} 
+                className="border-b cursor-pointer hover:bg-gray-50" 
+                onClick={() => handleViewReview(review.id)}
+              >
+                <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedReviews.has(review.id)}
+                    onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
+                  />
                 </td>
-                <td className="p-4">{new Date(review.createdAt).toLocaleDateString()}</td>
+                <td className="p-4 text-center">{startIndex + index + 1}</td>
+                <td className="p-4 text-center">{review.platform}</td>
+                <td className="p-4 text-center">
+                  <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
+                </td>
+                <td className="p-4 text-center">{review.productName}</td>
+                <td className="p-4 text-center">{review.optionName}</td>
+                <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
+                <td className="p-4 text-center">{review.shippingFee?.toLocaleString() ?? '0'}원</td>
+                <td className="p-4 text-center">{review.seller}</td>
+                <td className="p-4 text-center">{review.participants}</td>
+                <td className="p-4 text-center">{review.period}</td>
+                <td className="p-4 text-center">
+                  조회만 가능
+                </td>
               </tr>
             ))}
           </tbody>
@@ -133,7 +265,7 @@ export default function ProviderReviewsPage() {
       {/* 페이지네이션 */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          전체 {filteredReviews.length}개 항목 중 {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredReviews.length)}개 표시
+          전체 {filteredReviews.length}개 항목 중 {startIndex + 1}-{Math.min(startIndex + pageSize, filteredReviews.length)}개 표시
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -169,6 +301,23 @@ export default function ProviderReviewsPage() {
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>리뷰 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말로 이 리뷰를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 } 

@@ -105,7 +105,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
     e.preventDefault();
     // TODO: API 연동
     console.log('제품 수정:', { ...formData, images });
-    router.push('/admin/reviews');
+    router.push('/provider/reviews');
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,9 +133,9 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">제품 수정</h1>
+      <h1 className="text-2xl font-bold">제품 상세</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6 w-full">
+      <div className="space-y-6 w-full">
         <div className="space-y-4">
           <Label>제품 이미지</Label>
           <input
@@ -157,22 +157,8 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
                     className="object-cover"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveImage(index)}
-                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={handleAddImage}
-              className="aspect-square border-2 border-dashed rounded-lg flex items-center justify-center hover:border-primary transition-colors"
-            >
-              <Plus className="h-8 w-8 text-muted-foreground" />
-            </button>
           </div>
         </div>
 
@@ -182,6 +168,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             <Select
               value={formData.status}
               onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+              disabled={true}
             >
               <SelectTrigger>
                 <SelectValue placeholder="상태 선택" />
@@ -199,6 +186,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             <Select
               value={formData.platform}
               onValueChange={(value) => setFormData(prev => ({ ...prev, platform: value }))}
+              disabled={true}
             >
               <SelectTrigger>
                 <SelectValue placeholder="플랫폼 선택" />
@@ -218,6 +206,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               value={formData.productName}
               onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
               placeholder="제품명을 입력하세요"
+              readOnly={true}
             />
           </div>
 
@@ -228,6 +217,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               value={formData.optionName}
               onChange={(e) => setFormData(prev => ({ ...prev, optionName: e.target.value }))}
               placeholder="옵션명을 입력하세요"
+              readOnly={true}
             />
           </div>
 
@@ -239,6 +229,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               value={formData.price}
               onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
               placeholder="가격을 입력하세요"
+              readOnly={true}
             />
           </div>
 
@@ -250,6 +241,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               value={formData.shippingFee}
               onChange={(e) => setFormData(prev => ({ ...prev, shippingFee: e.target.value }))}
               placeholder="배송비를 입력하세요"
+              readOnly={true}
             />
           </div>
 
@@ -260,6 +252,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               value={formData.seller}
               onChange={(e) => setFormData(prev => ({ ...prev, seller: e.target.value }))}
               placeholder="판매자를 입력하세요"
+              readOnly={true}
             />
           </div>
 
@@ -271,6 +264,8 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               value={formData.participants}
               onChange={(e) => setFormData(prev => ({ ...prev, participants: e.target.value }))}
               placeholder="참여자 수를 입력하세요"
+              className="text-center"
+              readOnly={true}
             />
           </div>
 
@@ -281,6 +276,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               type="date"
               value={formData.startDate}
               onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+              readOnly={true}
             />
           </div>
 
@@ -291,45 +287,40 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               type="date"
               value={formData.endDate}
               onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+              readOnly={true}
             />
           </div>
         </div>
 
-        <Separator className="my-6" />
-
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">참여 인원</h2>
-          <div className="border rounded-lg">
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-4">참여자 목록</h2>
+          <div className="border rounded-md overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[80px]">번호</TableHead>
-                  <TableHead className="w-[120px]">이름</TableHead>
-                  <TableHead className="w-[150px]">연락처</TableHead>
-                  <TableHead className="w-[200px]">로그인계정</TableHead>
-                  <TableHead className="w-[200px]">이벤트계정</TableHead>
-                  <TableHead className="w-[120px]">닉네임</TableHead>
-                  <TableHead className="w-[100px]">리뷰인증</TableHead>
+                  <TableHead className="w-12 text-center">번호</TableHead>
+                  <TableHead>이름</TableHead>
+                  <TableHead>전화번호</TableHead>
+                  <TableHead>로그인 계정</TableHead>
+                  <TableHead>이벤트 계정</TableHead>
+                  <TableHead>닉네임</TableHead>
+                  <TableHead className="text-center">리뷰</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {participants.map((participant) => (
+                {participants.map((participant, index) => (
                   <TableRow key={participant.id}>
-                    <TableCell>{participant.id}</TableCell>
+                    <TableCell className="text-center">{index + 1}</TableCell>
                     <TableCell>{participant.name}</TableCell>
                     <TableCell>{participant.phone}</TableCell>
                     <TableCell>{participant.loginAccount}</TableCell>
                     <TableCell>{participant.eventAccount}</TableCell>
                     <TableCell>{participant.nickname}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleViewReview(participant);
-                        }}
+                        onClick={() => handleViewReview(participant)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         보기
@@ -341,20 +332,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             </Table>
           </div>
         </div>
-
-        <div className="flex justify-end gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
-            취소
-          </Button>
-          <Button type="submit">
-            수정
-          </Button>
-        </div>
-      </form>
+      </div>
 
       <Dialog open={isModalOpen} onOpenChange={(open) => {
         if (!open) {
