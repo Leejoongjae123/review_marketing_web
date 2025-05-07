@@ -10,6 +10,8 @@ export default function Home() {
         <p className="text-muted-foreground">역할에 맞는 서비스로 이동하세요.</p>
       </div>
 
+      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl">
         <Card className="flex flex-col h-full shadow-lg">
           <CardHeader className="bg-purple-600 text-white">
