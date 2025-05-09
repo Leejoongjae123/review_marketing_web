@@ -106,6 +106,10 @@ export default function ClientReviewsPage() {
     }
   };
 
+  const handleRowClick = (reviewId: string) => {
+    router.push(`/client/reviews/${reviewId}`);
+  };
+
   return (
     <div className="space-y-4 w-full h-full">
       <h1 className="text-2xl font-bold tracking-tight">리뷰 목록</h1>
@@ -174,30 +178,54 @@ export default function ClientReviewsPage() {
           <thead>
             <tr className="border-b bg-muted/50">
               <th className="h-12 px-4 text-center align-middle font-medium">번호</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">제목</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">제품</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">플랫폼</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">이미지</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">제품명</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">옵션명</th>
               <th className="h-12 px-4 text-center align-middle font-medium">가격</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">상태</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">작성일</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">배송비</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">판매자</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">기간</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">URL</th>
             </tr>
           </thead>
           <tbody>
             {paginatedReviews.map((review, index) => (
               <tr 
                 key={review.id} 
-                className="border-b cursor-pointer hover:bg-muted/50"
-                onClick={() => router.push(`/client/reviews/${review.id}`)}
+                className="border-b hover:bg-muted/50 cursor-pointer"
+                onClick={() => handleRowClick(review.id)}
               >
                 <td className="p-4 text-center">{startIndex + index + 1}</td>
-                <td className="p-4 text-center">{review.title}</td>
-                <td className="p-4 text-center">{review.productName}</td>
-                <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
+                <td className="p-4 text-center">{review.platform}</td>
                 <td className="p-4 text-center">
-                  <span className={getStatusStyle(review.status)}>
-                    {getStatusText(review.status)}
-                  </span>
+                  {review.imageUrl && (
+                    <img 
+                      src={review.imageUrl} 
+                      alt={review.productName} 
+                      className="w-16 h-16 object-cover mx-auto rounded-md"
+                    />
+                  )}
                 </td>
-                <td className="p-4 text-center">{new Date(review.createdAt).toLocaleDateString()}</td>
+                <td className="p-4 text-center">{review.productName}</td>
+                <td className="p-4 text-center">{review.optionName}</td>
+                <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
+                <td className="p-4 text-center">{review.shippingFee?.toLocaleString() ?? '0'}원</td>
+                <td className="p-4 text-center">{review.seller}</td>
+                <td className="p-4 text-center">{review.period}</td>
+                <td className="p-4 text-center">
+                  <a 
+                    href={review.productUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:text-blue-700 underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    링크
+                  </a>
+                </td>
               </tr>
             ))}
           </tbody>

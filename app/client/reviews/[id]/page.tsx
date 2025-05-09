@@ -56,6 +56,11 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
     status: "pending",
     startDate: "",
     endDate: "",
+    title: "",
+    content: "",
+    rating: "",
+    productUrl: "",
+    period: "",
   });
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -87,6 +92,11 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
         status: review.status || "pending",
         startDate: (review as any).startDate || "",
         endDate: (review as any).endDate || "",
+        title: review.title || "",
+        content: review.content || "",
+        rating: review.rating?.toString() || "",
+        productUrl: review.productUrl || "",
+        period: review.period || "",
       });
       // TODO: 기존 이미지 로드
     }
@@ -186,7 +196,7 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">리뷰 수정</h1>
+      <h1 className="text-2xl font-bold">이벤트 상세</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6 w-full">
         <div className="space-y-4">
@@ -200,7 +210,7 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
             onChange={handleImageChange}
             disabled
           />
-          <div className="grid grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
             {images.map((image, index) => (
               <div key={index} className="relative group">
                 <div className="aspect-square relative rounded-lg overflow-hidden border">
@@ -230,8 +240,8 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
+        <div className="grid grid-cols-2  gap-4">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="platform">플랫폼</Label>
             <Select
               value={formData.platform}
@@ -249,7 +259,7 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="status">상태</Label>
             <Select
               value={formData.status}
@@ -267,7 +277,7 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="productName">제품명</Label>
             <Input
               id="productName"
@@ -278,7 +288,7 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="optionName">옵션명</Label>
             <Input
               id="optionName"
@@ -289,7 +299,7 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="price">가격</Label>
             <Input
               id="price"
@@ -301,7 +311,7 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="shippingFee">배송비</Label>
             <Input
               id="shippingFee"
@@ -313,7 +323,7 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="seller">판매자</Label>
             <Input
               id="seller"
@@ -324,13 +334,79 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="startDate">리뷰 작성일</Label>
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="startDate">작성일</Label>
             <Input
               id="startDate"
               type="date"
               value={formData.startDate}
               onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+              disabled
+            />
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="title">제목</Label>
+            <Input
+              id="title"
+              value={formData.title || ""}
+              disabled
+            />
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="content">내용</Label>
+            <Input
+              id="content"
+              value={formData.content || ""}
+              disabled
+            />
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="rating">평점</Label>
+            <Input
+              id="rating"
+              type="number"
+              value={formData.rating || ""}
+              disabled
+            />
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="productUrl">상품 URL</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="productUrl"
+                value={formData.productUrl || ""}
+                disabled
+                className="flex-1"
+              />
+              {formData.productUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="whitespace-nowrap"
+                >
+                  <a
+                    href={formData.productUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    링크 이동
+                  </a>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="period">이벤트 기간</Label>
+            <Input
+              id="period"
+              value={formData.period || ""}
               disabled
             />
           </div>
@@ -351,8 +427,8 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
               리뷰 작성
             </Button>
           </div>
-          <div className="border rounded-lg">
-            <Table>
+          <div className="border rounded-lg overflow-x-auto">
+            <Table className="min-w-[1000px] w-full">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[80px]">번호</TableHead>
@@ -413,27 +489,27 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
               <div className="space-y-4">
                 <div>
                   <Label>이름</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.name}</p>
+                  <Input value={selectedParticipant.name} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>연락처</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.phone}</p>
+                  <Input value={selectedParticipant.phone} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>로그인계정</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.loginAccount}</p>
+                  <Input value={selectedParticipant.loginAccount} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>이벤트계정</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.eventAccount}</p>
+                  <Input value={selectedParticipant.eventAccount} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>닉네임</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.nickname}</p>
+                  <Input value={selectedParticipant.nickname} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>리뷰 인증 이미지</Label>
-                  {selectedParticipant.reviewImage && (
+                  {selectedParticipant.reviewImage ? (
                     <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
                       <Image
                         src={selectedParticipant.reviewImage}
@@ -446,6 +522,8 @@ export default function ClientEditReviewPage({ params }: { params: Promise<{ id:
                         }}
                       />
                     </div>
+                  ) : (
+                    <Input value="리뷰 이미지가 없습니다." readOnly />
                   )}
                 </div>
               </div>

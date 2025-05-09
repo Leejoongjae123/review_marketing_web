@@ -209,37 +209,57 @@ export default function ProviderReviewsPage() {
         <table className="w-full min-w-[800px]">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">제품명</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">옵션명</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">가격</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">배송비</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">판매자</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">참여자</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">기간</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">번호</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">플랫폼</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">이미지</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">제품명</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">옵션명</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">가격</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">배송비</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">판매자</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">기간</th>
+              <th className="h-12 px-4 text-center align-middle font-medium">URL</th>
             </tr>
           </thead>
           <tbody>
             {paginatedReviews.map((review, index) => (
               <tr 
                 key={review.id} 
-                className="border-b cursor-pointer hover:bg-gray-50" 
+                className="border-b hover:bg-muted/50 cursor-pointer" 
                 onClick={() => handleViewReview(review.id)}
               >
                 <td className="p-4 text-center">{startIndex + index + 1}</td>
                 <td className="p-4 text-center">{review.platform}</td>
                 <td className="p-4 text-center">
-                  <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
+                  {review.imageUrl ? (
+                    <img 
+                      src={review.imageUrl} 
+                      alt={review.productName} 
+                      className="w-16 h-16 object-cover mx-auto rounded-md"
+                    />
+                  ) : (
+                    <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
+                  )}
                 </td>
                 <td className="p-4 text-center">{review.productName}</td>
                 <td className="p-4 text-center">{review.optionName}</td>
                 <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
                 <td className="p-4 text-center">{review.shippingFee?.toLocaleString() ?? '0'}원</td>
                 <td className="p-4 text-center">{review.seller}</td>
-                <td className="p-4 text-center">{review.participants}</td>
                 <td className="p-4 text-center">{review.period}</td>
+                <td className="p-4 text-center">
+                  <a 
+                    href={review.productUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:text-blue-700 underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    링크
+                  </a>
+                </td>
               </tr>
             ))}
           </tbody>

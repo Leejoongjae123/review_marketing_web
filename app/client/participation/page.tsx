@@ -292,37 +292,37 @@ export default function ClientParticipationPage() {
             <DialogTitle>응모 상세 정보</DialogTitle>
           </DialogHeader>
           {selectedHistory && (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div>
+            <div className="space-y-4">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
                   <Label>플랫폼</Label>
-                  <p className="text-sm mt-1">{selectedHistory.platform}</p>
+                  <Input value={selectedHistory.platform} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>제품명</Label>
-                  <p className="text-sm mt-1">{selectedHistory.productName}</p>
+                  <Input value={selectedHistory.productName} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>옵션명</Label>
-                  <p className="text-sm mt-1">{selectedHistory.optionName}</p>
+                  <Input value={selectedHistory.optionName} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>가격</Label>
-                  <p className="text-sm mt-1">{selectedHistory.price?.toLocaleString()}원</p>
+                  <Input value={`${selectedHistory.price?.toLocaleString()}원`} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>배송비</Label>
-                  <p className="text-sm mt-1">{selectedHistory.shippingFee?.toLocaleString()}원</p>
+                  <Input value={`${selectedHistory.shippingFee?.toLocaleString()}원`} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>판매지</Label>
-                  <p className="text-sm mt-1">{selectedHistory.sellerLocation}</p>
+                  <Input value={selectedHistory.sellerLocation} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>기간</Label>
-                  <p className="text-sm mt-1">{selectedHistory.period}</p>
+                  <Input value={selectedHistory.period} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>제품 이미지</Label>
                   {selectedHistory.reviewImage ? (
                     <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
@@ -339,9 +339,7 @@ export default function ClientParticipationPage() {
                       />
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      제품 이미지가 없습니다.
-                    </p>
+                    <Input value="제품 이미지가 없습니다." readOnly />
                   )}
                 </div>
               </div>

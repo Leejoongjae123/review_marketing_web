@@ -29,6 +29,7 @@ export type Review = {
   seller: string;
   participants: number;
   period: string;
+  productUrl: string;
   createdAt: string;
   updatedAt: string;
   endDate?: string;

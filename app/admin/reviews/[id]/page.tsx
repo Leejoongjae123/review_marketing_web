@@ -56,6 +56,10 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
     status: "pending",
     startDate: "",
     endDate: "",
+    title: "",
+    content: "",
+    rating: "",
+    productUrl: "",
   });
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -77,6 +81,10 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
         status: review.status || "pending",
         startDate: (review as any).startDate || "",
         endDate: (review as any).endDate || "",
+        title: review.title || "",
+        content: review.content || "",
+        rating: review.rating?.toString() || "",
+        productUrl: review.productUrl || "",
       });
       // TODO: 기존 이미지 로드
     }
@@ -146,7 +154,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             multiple
             onChange={handleImageChange}
           />
-          <div className="grid grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
             {images.map((image, index) => (
               <div key={index} className="relative group">
                 <div className="aspect-square relative rounded-lg overflow-hidden border">
@@ -177,24 +185,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="status">상태</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="상태 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">대기중</SelectItem>
-                <SelectItem value="approved">승인됨</SelectItem>
-                <SelectItem value="rejected">거부됨</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="platform">플랫폼</Label>
             <Select
               value={formData.platform}
@@ -211,7 +202,24 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="status">상태</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="상태 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">대기중</SelectItem>
+                <SelectItem value="approved">승인됨</SelectItem>
+                <SelectItem value="rejected">거부됨</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="productName">제품명</Label>
             <Input
               id="productName"
@@ -221,7 +229,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="optionName">옵션명</Label>
             <Input
               id="optionName"
@@ -231,7 +239,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="price">가격</Label>
             <Input
               id="price"
@@ -242,7 +250,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="shippingFee">배송비</Label>
             <Input
               id="shippingFee"
@@ -253,7 +261,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="seller">판매자</Label>
             <Input
               id="seller"
@@ -263,7 +271,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="participants">참여자 수</Label>
             <Input
               id="participants"
@@ -274,24 +282,85 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="startDate">시작일</Label>
             <Input
               id="startDate"
-              type="date"
+              type="datetime-local"
               value={formData.startDate}
               onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="endDate">종료일</Label>
             <Input
               id="endDate"
-              type="date"
+              type="datetime-local"
               value={formData.endDate}
               onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
             />
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="title">제목</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="제목을 입력하세요"
+            />
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="content">내용</Label>
+            <Input
+              id="content"
+              value={formData.content}
+              onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+              placeholder="내용을 입력하세요"
+            />
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="rating">평점</Label>
+            <Input
+              id="rating"
+              type="number"
+              value={formData.rating}
+              onChange={(e) => setFormData(prev => ({ ...prev, rating: e.target.value }))}
+              placeholder="평점을 입력하세요"
+            />
+          </div>
+
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="productUrl">상품 URL</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="productUrl"
+                value={formData.productUrl}
+                onChange={(e) => setFormData(prev => ({ ...prev, productUrl: e.target.value }))}
+                placeholder="상품 URL을 입력하세요"
+                className="flex-1"
+              />
+              {formData.productUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="whitespace-nowrap"
+                >
+                  <a
+                    href={formData.productUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    링크 이동
+                  </a>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -371,27 +440,27 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               <div className="space-y-4">
                 <div>
                   <Label>이름</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.name}</p>
+                  <Input value={selectedParticipant.name} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>연락처</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.phone}</p>
+                  <Input value={selectedParticipant.phone} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>로그인계정</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.loginAccount}</p>
+                  <Input value={selectedParticipant.loginAccount} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>이벤트계정</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.eventAccount}</p>
+                  <Input value={selectedParticipant.eventAccount} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>닉네임</Label>
-                  <p className="text-sm mt-1">{selectedParticipant.nickname}</p>
+                  <Input value={selectedParticipant.nickname} readOnly />
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label>리뷰 인증 이미지</Label>
-                  {selectedParticipant.reviewImage && (
+                  {selectedParticipant.reviewImage ? (
                     <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
                       <Image
                         src={selectedParticipant.reviewImage}
@@ -404,6 +473,8 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
                         }}
                       />
                     </div>
+                  ) : (
+                    <Input value="리뷰 이미지가 없습니다." readOnly />
                   )}
                 </div>
               </div>

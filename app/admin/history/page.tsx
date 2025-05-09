@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
+import Link from "next/link";
 
 // 페이지 컴포넌트에서 필요한 UserHistory 타입 선언
 interface UserHistory {
@@ -235,7 +236,7 @@ export default function AdminHistoryPage() {
         </Select>
       </div>
       <div className="border rounded-lg overflow-x-auto">
-        <Table className="w-full min-w-[1000px]">
+        <Table className="w-full min-w-[800px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[80px]">번호</TableHead>
@@ -246,7 +247,6 @@ export default function AdminHistoryPage() {
               <TableHead className="w-[200px]">참여 이벤트</TableHead>
               <TableHead className="w-[100px]">상태</TableHead>
               <TableHead className="w-[120px]">리뷰이미지</TableHead>
-              <TableHead className="w-[100px]">비고</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -261,7 +261,18 @@ export default function AdminHistoryPage() {
                 <TableCell>{history.phone}</TableCell>
                 <TableCell>{history.email}</TableCell>
                 <TableCell>{history.eventAccount}</TableCell>
-                <TableCell>{history.eventName}</TableCell>
+                <TableCell 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <Link 
+                    href={`/admin/events/${encodeURIComponent(history.eventName || '')}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {history.eventName}
+                  </Link>
+                </TableCell>
                 <TableCell>
                   <span
                     className={`px-2 py-1 rounded-md text-xs ${
@@ -292,16 +303,6 @@ export default function AdminHistoryPage() {
                   ) : (
                     <span className="text-muted-foreground">없음</span>
                   )}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-100"
-                    onClick={(e) => handleDelete(history.id, e)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -365,52 +366,77 @@ export default function AdminHistoryPage() {
             <DialogTitle>응모 상세 정보</DialogTitle>
           </DialogHeader>
           {selectedHistory && (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <Label>이름</Label>
-                  <p className="text-sm mt-1">{selectedHistory.name}</p>
-                </div>
-                <div>
-                  <Label>연락처</Label>
-                  <p className="text-sm mt-1">{selectedHistory.phone}</p>
-                </div>
-                <div>
-                  <Label>이메일</Label>
-                  <p className="text-sm mt-1">{selectedHistory.email}</p>
-                </div>
-                <div>
-                  <Label>참여계정</Label>
-                  <p className="text-sm mt-1">{selectedHistory.eventAccount}</p>
-                </div>
-                <div>
-                  <Label>참여 이벤트</Label>
-                  <p className="text-sm mt-1">{selectedHistory.eventName}</p>
-                </div>
-                <div>
-                  <Label>상태</Label>
-                  <p className="text-sm mt-1">
-                    <span
-                      className={`px-2 py-1 rounded-md text-xs ${
-                        selectedHistory.status === "completed"
-                          ? "bg-green-100 text-green-800"
-                          : selectedHistory.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {selectedHistory.status === "completed"
-                        ? "완료"
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">이름</Label>
+                <Input
+                  id="name"
+                  value={selectedHistory.name}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="phone">연락처</Label>
+                <Input
+                  id="phone"
+                  value={selectedHistory.phone}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">이메일</Label>
+                <Input
+                  id="email"
+                  value={selectedHistory.email}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="eventAccount">참여계정</Label>
+                <Input
+                  id="eventAccount"
+                  value={selectedHistory.eventAccount}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="eventName">참여 이벤트</Label>
+                <Input
+                  id="eventName"
+                  value={selectedHistory.eventName}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="status">상태</Label>
+                <div className="h-10 px-3 py-2 rounded-md border border-input flex items-center">
+                  <span
+                    className={`px-2 py-1 rounded-md text-xs ${
+                      selectedHistory.status === "completed"
+                        ? "bg-green-100 text-green-800"
                         : selectedHistory.status === "pending"
-                          ? "대기중"
-                          : "취소"}
-                    </span>
-                  </p>
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {selectedHistory.status === "completed"
+                      ? "완료"
+                      : selectedHistory.status === "pending"
+                        ? "대기중"
+                        : "취소"}
+                  </span>
                 </div>
-                <div>
-                  <Label>리뷰 인증 이미지</Label>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="reviewImage">리뷰 인증 이미지</Label>
+                <div className="min-h-[150px] rounded-md flex items-center justify-start p-4">
                   {selectedHistory.reviewImage ? (
-                    <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
+                    <div className="relative aspect-square rounded-lg overflow-hidden w-32">
                       <Image
                         src={selectedHistory.reviewImage}
                         alt="리뷰 인증 이미지"
@@ -424,38 +450,10 @@ export default function AdminHistoryPage() {
                       />
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <span className="text-sm text-muted-foreground">
                       리뷰 이미지가 없습니다.
-                    </p>
+                    </span>
                   )}
-                </div>
-                <div>
-                  <Label>플랫폼</Label>
-                  <p className="text-sm mt-1">{selectedHistory.platform}</p>
-                </div>
-                <div>
-                  <Label>상품명</Label>
-                  <p className="text-sm mt-1">{selectedHistory.productName}</p>
-                </div>
-                <div>
-                  <Label>옵션명</Label>
-                  <p className="text-sm mt-1">{selectedHistory.optionName}</p>
-                </div>
-                <div>
-                  <Label>가격</Label>
-                  <p className="text-sm mt-1">{selectedHistory.price.toLocaleString()}원</p>
-                </div>
-                <div>
-                  <Label>배송비</Label>
-                  <p className="text-sm mt-1">{selectedHistory.shippingFee.toLocaleString()}원</p>
-                </div>
-                <div>
-                  <Label>판매자 위치</Label>
-                  <p className="text-sm mt-1">{selectedHistory.sellerLocation}</p>
-                </div>
-                <div>
-                  <Label>기간</Label>
-                  <p className="text-sm mt-1">{selectedHistory.period}</p>
                 </div>
               </div>
             </div>

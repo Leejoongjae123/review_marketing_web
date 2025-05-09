@@ -229,8 +229,9 @@ export default function AdminReviewsPage() {
           </thead>
           <tbody>
             {paginatedReviews.map((review, index) => (
-              <tr key={review.id} className="border-b">
-                <td className="p-4 text-center">
+              <tr key={review.id} className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => handleEditProduct(review.id)}>
+                <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selectedReviews.has(review.id)}
                     onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
@@ -253,14 +254,10 @@ export default function AdminReviewsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleEditProduct(review.id)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteReview(review.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteReview(review.id);
+                      }}
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>

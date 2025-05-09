@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
+import Link from "next/link";
 
 // 페이지 컴포넌트에서 필요한 UserHistory 타입 선언
 interface UserHistory {
@@ -246,7 +247,6 @@ export default function ProviderHistoryPage() {
               <TableHead className="w-[200px]">참여 이벤트</TableHead>
               <TableHead className="w-[100px]">상태</TableHead>
               <TableHead className="w-[120px]">리뷰이미지</TableHead>
-              <TableHead className="w-[100px]">비고</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -261,7 +261,18 @@ export default function ProviderHistoryPage() {
                 <TableCell>{history.phone}</TableCell>
                 <TableCell>{history.email}</TableCell>
                 <TableCell>{history.eventAccount}</TableCell>
-                <TableCell>{history.eventName}</TableCell>
+                <TableCell 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <Link 
+                    href={`/provider/events/${encodeURIComponent(history.eventName || '')}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {history.eventName}
+                  </Link>
+                </TableCell>
                 <TableCell>
                   <span
                     className={`px-2 py-1 rounded-md text-xs ${
@@ -292,8 +303,6 @@ export default function ProviderHistoryPage() {
                   ) : (
                     <span className="text-muted-foreground">없음</span>
                   )}
-                </TableCell>
-                <TableCell>
                 </TableCell>
               </TableRow>
             ))}
@@ -357,52 +366,77 @@ export default function ProviderHistoryPage() {
             <DialogTitle>응모 상세 정보</DialogTitle>
           </DialogHeader>
           {selectedHistory && (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <Label>이름</Label>
-                  <p className="text-sm mt-1">{selectedHistory.name}</p>
-                </div>
-                <div>
-                  <Label>연락처</Label>
-                  <p className="text-sm mt-1">{selectedHistory.phone}</p>
-                </div>
-                <div>
-                  <Label>이메일</Label>
-                  <p className="text-sm mt-1">{selectedHistory.email}</p>
-                </div>
-                <div>
-                  <Label>참여계정</Label>
-                  <p className="text-sm mt-1">{selectedHistory.eventAccount}</p>
-                </div>
-                <div>
-                  <Label>참여 이벤트</Label>
-                  <p className="text-sm mt-1">{selectedHistory.eventName}</p>
-                </div>
-                <div>
-                  <Label>상태</Label>
-                  <p className="text-sm mt-1">
-                    <span
-                      className={`px-2 py-1 rounded-md text-xs ${
-                        selectedHistory.status === "completed"
-                          ? "bg-green-100 text-green-800"
-                          : selectedHistory.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {selectedHistory.status === "completed"
-                        ? "완료"
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">이름</Label>
+                <Input
+                  id="name"
+                  value={selectedHistory.name}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="phone">연락처</Label>
+                <Input
+                  id="phone"
+                  value={selectedHistory.phone}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">이메일</Label>
+                <Input
+                  id="email"
+                  value={selectedHistory.email}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="eventAccount">참여계정</Label>
+                <Input
+                  id="eventAccount"
+                  value={selectedHistory.eventAccount}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="eventName">참여 이벤트</Label>
+                <Input
+                  id="eventName"
+                  value={selectedHistory.eventName}
+                  readOnly
+                  className=""
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="status">상태</Label>
+                <div className="h-10 px-3 py-2 rounded-md border border-input flex items-center">
+                  <span
+                    className={`px-2 py-1 rounded-md text-xs ${
+                      selectedHistory.status === "completed"
+                        ? "bg-green-100 text-green-800"
                         : selectedHistory.status === "pending"
-                          ? "대기중"
-                          : "취소"}
-                    </span>
-                  </p>
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {selectedHistory.status === "completed"
+                      ? "완료"
+                      : selectedHistory.status === "pending"
+                        ? "대기중"
+                        : "취소"}
+                  </span>
                 </div>
-                <div>
-                  <Label>리뷰 인증 이미지</Label>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="reviewImage">리뷰 인증 이미지</Label>
+                <div className="min-h-[150px] rounded-md flex items-center justify-start p-4">
                   {selectedHistory.reviewImage ? (
-                    <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
+                    <div className="relative aspect-square rounded-lg overflow-hidden w-32">
                       <Image
                         src={selectedHistory.reviewImage}
                         alt="리뷰 인증 이미지"
@@ -416,9 +450,9 @@ export default function ProviderHistoryPage() {
                       />
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <span className="text-sm text-muted-foreground">
                       리뷰 이미지가 없습니다.
-                    </p>
+                    </span>
                   )}
                 </div>
               </div>
