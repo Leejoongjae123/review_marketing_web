@@ -21,6 +21,7 @@ async function getKakaoUserInfo(accessToken: string) {
   } catch (error) {
     console.error('카카오 API 호출 중 오류:', error);
     return null;
+    
   }
 }
 
