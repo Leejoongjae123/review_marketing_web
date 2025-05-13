@@ -4,8 +4,8 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    
+    const supabase = await createClient();
     const { review_id, event_account, ...otherData } = await request.json();
 
     // 중복 체크 - event_account와 review_id 모두 일치하는지 확인
