@@ -1047,9 +1047,6 @@ export default function ClientEditReviewPage() {
       <Dialog open={isSuccessModalOpen} onOpenChange={setIsSuccessModalOpen}>
         <DialogContent className="max-w-md">
           <div className="flex flex-col items-center justify-center space-y-4 py-6">
-            <div className="rounded-full bg-green-100 p-3">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
             <h2 className="text-xl font-semibold">등록이 완료되었습니다</h2>
             <p className="text-center text-muted-foreground">
               리뷰가 성공적으로 등록되었습니다.

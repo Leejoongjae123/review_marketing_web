@@ -219,7 +219,7 @@ export default function ClientReviewsPage() {
         </div>
       ) : (
         <div className="rounded-md border overflow-x-auto">
-          <table className="w-full min-w-[800px]">
+          <table className="w-full min-w-[1400px]">
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="h-12 px-4 text-center align-middle font-medium">번호</th>

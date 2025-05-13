@@ -62,19 +62,37 @@ export async function POST(
       return NextResponse.json({ error: '모든 필수 필드를 입력해주세요.' }, { status: 400 });
     }
     
-    // 이벤트 계정 중복 체크
-    const { data: existingParticipant, error: checkError } = await supabase
+    // 이벤트 계정 중복 체크 (전체 테이블에서)
+    const { data: existingEventAccount, error: eventAccountError } = await supabase
       .from('review_participants')
       .select('id')
       .eq('event_account', event_account)
+      .eq('review_id', reviewId)
       .single();
       
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116는 결과가 없을 때의 에러
-      return NextResponse.json({ error: checkError.message }, { status: 500 });
+    if (eventAccountError && eventAccountError.code !== 'PGRST116') { // PGRST116는 결과가 없을 때의 에러
+      return NextResponse.json({ error: eventAccountError.message }, { status: 500 });
     }
     
-    if (existingParticipant) {
+    if (existingEventAccount) {
       return NextResponse.json({ error: '이미 등록된 이벤트 계정입니다.' }, { status: 400 });
+    }
+    
+    // 같은 리뷰에 로그인 계정 중복 체크
+    const { data: existingLoginAccount, error: loginAccountError } = await supabase
+      .from('review_participants')
+      .select('*')
+      .eq('review_id', reviewId)
+      .eq('event_account', event_account)
+      .single();
+      
+    if (loginAccountError && loginAccountError.code !== 'PGRST116') {
+      return NextResponse.json({ error: loginAccountError.message }, { status: 500 });
+    }
+    console.log("existingLoginAccount", existingLoginAccount)
+    
+    if (existingLoginAccount) {
+      return NextResponse.json({ error: '같은 리뷰에 이미 참여한 계정입니다.' }, { status: 400 });
     }
     
     // 참여자 추가

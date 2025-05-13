@@ -43,7 +43,13 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        setLoading(true);
         const response = await fetch('/api/auth/check-auth');
+        
+        if (!response.ok) {
+          throw new Error('인증 상태 확인 실패');
+        }
+        
         const data = await response.json();
         setIsAuthenticated(data.authenticated);
       } catch (error) {
@@ -65,14 +71,20 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
 
   // 로그아웃 핸들러
   const handleLogout = async () => {
-    const response = await fetch("/api/auth/signout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    
-    if (response.ok) {
-      setIsAuthenticated(false);
-      router.push(`/${role}/auth`);
+    try {
+      const response = await fetch("/api/auth/signout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (response.ok) {
+        setIsAuthenticated(false);
+        router.push(`/${role}/auth`);
+      } else {
+        console.error('로그아웃 실패:', await response.text());
+      }
+    } catch (error) {
+      console.error('로그아웃 중 오류 발생:', error);
     }
   };
 
@@ -130,8 +142,8 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
     if (isAuthenticated) {
       return (
         <Button 
-          variant="destructive"
-          className="w-full flex items-center justify-center gap-2"
+          variant="outline"
+          className="border-2 border-black w-full flex items-center justify-center gap-2"
           onClick={handleLogout}
         >
           <LogOut className="h-4 w-4" />
