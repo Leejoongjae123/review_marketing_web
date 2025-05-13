@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 서버 컴포넌트에서 Supabase 클라이언트 생성
@@ -16,8 +16,8 @@ export async function GET(
     }
     
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const {id} = await params
-    const reviewId = id
+    const { id } = await context.params;
+    const reviewId = id;
     // 리뷰 정보 가져오기
     const { data: review, error } = await supabase
       .from('reviews')

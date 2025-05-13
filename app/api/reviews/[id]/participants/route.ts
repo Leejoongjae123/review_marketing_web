@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 서버 컴포넌트에서 Supabase 클라이언트 생성
@@ -16,8 +16,9 @@ export async function GET(
     }
     
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const {id} = await params
-    const reviewId = id
+    const { id } = await context.params;
+    const reviewId = id;
+    
     // 참여자 정보 가져오기
     const { data: participants, error } = await supabase
       .from('review_participants')
@@ -38,7 +39,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 서버 컴포넌트에서 Supabase 클라이언트 생성
@@ -50,8 +51,8 @@ export async function POST(
     }
     
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const {id} = params
-    const reviewId = id
+    const { id } = await context.params;
+    const reviewId = id;
     const body = await request.json();
     
     // 필수 필드 검증
