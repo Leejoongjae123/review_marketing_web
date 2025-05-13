@@ -51,13 +51,8 @@ export const clientMenuItems: MenuItem[] = [
     icon: "file-text",
   },
   {
-    title: "로그인/회원가입",
-    href: "/client/auth",
-    icon: "log-in",
-  },
-  {
     title: "응모 관리",
     href: "/client/participation",
     icon: "history",
-  },
+  }
 ]; 

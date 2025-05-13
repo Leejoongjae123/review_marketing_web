@@ -1,7 +1,7 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from "next/headers";
 
-export const createClient = async () => {
+export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -9,21 +9,16 @@ export const createClient = async () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
+        get(name) {
+          return cookieStore.get(name)?.value;
         },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          } catch (error) {
-            // The `set` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
+        set(name, value, options) {
+          cookieStore.set({ name, value, ...options });
         },
-      },
-    },
+        remove(name, options) {
+          cookieStore.set({ name, value: '', ...options, maxAge: 0 });
+        },
+      }
+    }
   );
-};
+}

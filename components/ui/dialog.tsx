@@ -27,6 +27,21 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+const VisuallyHidden = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <span
+      className="absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0"
+      style={{
+        clip: "rect(0, 0, 0, 0)",
+        clipPath: "inset(50%)",
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+VisuallyHidden.displayName = "VisuallyHidden"
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -41,6 +56,15 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
+      {!React.Children.toArray(children).some(
+        child =>
+          React.isValidElement(child) &&
+          child.type === DialogPrimitive.Title
+      ) && (
+        <VisuallyHidden>
+          <DialogPrimitive.Title>Dialog</DialogPrimitive.Title>
+        </VisuallyHidden>
+      )}
       {children}
       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
         <X className="h-4 w-4" />
@@ -117,4 +141,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  VisuallyHidden,
 } 

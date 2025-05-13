@@ -26,8 +26,8 @@ export default function LayoutShell({
       </div>
       
       {/* 메인 콘텐츠 영역 - 모바일에서는 전체 너비 사용 및 상단 여백 추가 */}
-      <main className="flex-1 w-full min-h-screen">
-        <div className="flex flex-col gap-4 p-4 md:p-8 w-full h-full mt-14 md:mt-0">
+      <main className="flex-1 w-full max-h-screen overflow-y-auto">
+        <div className="flex flex-col gap-4 p-4 md:p-8 w-full h-full mt-14 md:mt-0 ">
           {children}
         </div>
       </main>

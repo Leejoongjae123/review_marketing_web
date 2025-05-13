@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { Menu, X, FileText, Users, LogIn, History, BarChart, Presentation } from "lucide-react";
+import { Menu, X, FileText, Users, LogIn, History, BarChart, Presentation, LogOut, UserPlus } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { usePathname, useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
@@ -34,11 +34,56 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
   
   // 현재 선택된 역할 상태
   const [selectedRole, setSelectedRole] = useState<string>(role);
+  // 인증 상태
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  // 인증 확인 로딩 상태
+  const [loading, setLoading] = useState<boolean>(true);
+  
+  // 인증 상태 확인
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/check-auth');
+        const data = await response.json();
+        setIsAuthenticated(data.authenticated);
+      } catch (error) {
+        console.error('인증 상태 확인 실패:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAuth();
+  }, []);
   
   // 역할 변경 시 해당 역할의 auth 페이지로 이동
   const handleRoleChange = (value: string) => {
     setSelectedRole(value);
     router.push(`/${value}/auth`);
+  };
+
+  // 로그아웃 핸들러
+  const handleLogout = async () => {
+    const response = await fetch("/api/auth/signout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    
+    if (response.ok) {
+      setIsAuthenticated(false);
+      router.push(`/${role}/auth`);
+    }
+  };
+
+  // 로그인 페이지로 이동
+  const handleLogin = () => {
+    router.push(`/${role}/auth`);
+  };
+
+  // 회원가입 페이지로 이동
+  const handleSignUp = () => {
+    router.push(`/sign-up`);
   };
 
   // 아이콘 매핑 함수
@@ -78,6 +123,38 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
     }
   };
   
+  // 인증 관련 버튼 렌더링
+  const renderAuthButtons = () => {
+    if (loading) return null;
+    
+    if (isAuthenticated) {
+      return (
+        <Button 
+          variant="destructive"
+          className="w-full flex items-center justify-center gap-2"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          로그아웃
+        </Button>
+      );
+    } else {
+      return (
+        <div className="flex flex-col gap-2">
+          <Button 
+            variant="default"
+            className="w-full flex items-center justify-center gap-2"
+            onClick={handleLogin}
+          >
+            <LogIn className="h-4 w-4" />
+            로그인
+          </Button>
+          
+        </div>
+      );
+    }
+  };
+  
   return (
     <>
       {/* 모바일 환경에서는 버튼과 Sheet를 렌더링 */}
@@ -94,7 +171,7 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[240px] sm:w-[300px] h-screen overflow-y-auto">
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 h-full">
               <div className="flex justify-between items-center py-4">
                 <div>
                   <h2 className="px-2 text-lg font-semibold tracking-tight">
@@ -122,7 +199,7 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
                 </Select>
               </div>
               <Separator />
-              <nav className="flex flex-col gap-2 ">
+              <nav className="flex flex-col gap-2 flex-1">
                 {menuItems.map((item, index) => (
                   <Link 
                     key={index} 
@@ -137,6 +214,11 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
                   </Link>
                 ))}
               </nav>
+              
+              {/* 인증 버튼 */}
+              <div className="mt-auto px-2 mb-4">
+                {renderAuthButtons()}
+              </div>
             </div>
           </SheetContent>
         </Sheet>
@@ -169,7 +251,7 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
             </div>
           </div>
           <Separator />
-          <nav className="flex flex-col gap-2 px-4">
+          <nav className="flex flex-col gap-2 px-4 flex-1">
             {menuItems.map((item, index) => (
               <Link 
                 key={index} 
@@ -184,6 +266,11 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
               </Link>
             ))}
           </nav>
+          
+          {/* 인증 버튼 */}
+          <div className="mt-auto px-4 mb-6">
+            {renderAuthButtons()}
+          </div>
         </div>
       </div>
     </>
