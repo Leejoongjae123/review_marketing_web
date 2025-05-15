@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -28,81 +28,208 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Plus, X, Eye } from "lucide-react";
 import Image from "next/image";
-import { mockReviews } from "@/lib/mock-data";
+import { useToast } from "@/components/ui/use-toast";
+import { Spinner } from "@/components/ui/spinner";
+import { createClient } from "@/utils/supabase/client";
 
 // 참여자 타입 정의
 interface Participant {
-  id: number;
+  id: string;
   name: string;
   phone: string;
-  loginAccount: string;
-  eventAccount: string;
+  login_account: string;
+  event_account: string;
   nickname: string;
-  reviewImage?: string;
+  review_image?: string;
 }
 
-export default function EditReviewPage({ params }: { params: Promise<{ id: string }> }) {
+// 리뷰 타입 정의
+interface Review {
+  id: string;
+  title: string;
+  content: string;
+  rating: number;
+  status: string;
+  author_id?: string;
+  author_name?: string;
+  product_id?: string;
+  product_name: string;
+  platform: string;
+  image_url?: string;
+  option_name?: string;
+  price?: number;
+  shipping_fee?: number;
+  seller?: string;
+  participants?: number;
+  period?: string;
+  product_url?: string;
+  created_at: string;
+  updated_at?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export default function EditReviewPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const unwrappedParams = React.use(params);
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     platform: "",
-    productName: "",
-    optionName: "",
+    product_name: "",
+    option_name: "",
     price: "",
-    shippingFee: "",
+    shipping_fee: "",
     seller: "",
     participants: "",
     status: "pending",
-    startDate: "",
-    endDate: "",
+    start_date: "",
+    end_date: "",
     title: "",
     content: "",
     rating: "",
-    productUrl: "",
+    product_url: "",
+    period: "",
   });
+
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+  const [selectedParticipant, setSelectedParticipant] =
+    useState<Participant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const supabase = createClient();
 
   useEffect(() => {
-    // TODO: API 연동
-    const review = mockReviews.find(r => r.id === unwrappedParams.id);
-    if (review) {
-      setFormData({
-        platform: review.platform,
-        productName: review.productName,
-        optionName: review.optionName,
-        price: review.price?.toString() || "",
-        shippingFee: review.shippingFee?.toString() || "",
-        seller: review.seller,
-        participants: review.participants?.toString() || "",
-        status: review.status || "pending",
-        startDate: (review as any).startDate || "",
-        endDate: (review as any).endDate || "",
-        title: review.title || "",
-        content: review.content || "",
-        rating: review.rating?.toString() || "",
-        productUrl: review.productUrl || "",
-      });
-      // TODO: 기존 이미지 로드
-    }
+    const fetchReviewData = async () => {
+      setIsLoading(true);
+      try {
+        // 리뷰 데이터 가져오기
+        const reviewResponse = await fetch(
+          `/api/reviews/${unwrappedParams.id}`
+        );
+        if (!reviewResponse.ok) {
+          const errorData = await reviewResponse.json().catch(() => ({}));
+          console.error("리뷰 데이터 요청 실패:", {
+            status: reviewResponse.status,
+            statusText: reviewResponse.statusText,
+            error: errorData.error || "알 수 없는 오류",
+          });
+          throw new Error(
+            `리뷰 데이터를 가져오는데 실패했습니다. 상태: ${reviewResponse.status}`
+          );
+        }
+        const reviewData = await reviewResponse.json();
+        const review = reviewData.review as Review;
 
-    // 임시 참여자 데이터
-    setParticipants([
-      {
-        id: 1,
-        name: "홍길동",
-        phone: "010-1234-5678",
-        loginAccount: "user1@example.com",
-        eventAccount: "event1@example.com",
-        nickname: "길동이",
-        reviewImage: "/noimage.jpg"
-      },
-      // 더 많은 참여자 데이터 추가 가능
-    ]);
+        if (review) {
+          // 시작일과 종료일로부터 이벤트 기간 계산
+          let periodValue = "";
+          if (review.start_date && review.end_date) {
+            const startDate = new Date(review.start_date);
+            const endDate = new Date(review.end_date);
+
+            // 날짜 형식 변환 (YYYY.MM.DD 형식)
+            const formatDate = (date: Date) => {
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, "0");
+              const day = String(date.getDate()).padStart(2, "0");
+              return `${year}.${month}.${day}`;
+            };
+
+            periodValue = `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
+          }
+
+          setFormData({
+            platform: review.platform || "",
+            product_name: review.product_name || "",
+            option_name: review.option_name || "",
+            price: review.price?.toString() || "",
+            shipping_fee: review.shipping_fee?.toString() || "",
+            seller: review.seller || "",
+            participants: review.participants?.toString() || "",
+            status: review.status || "pending",
+            start_date: review.start_date
+              ? new Date(review.start_date).toISOString().substring(0, 16)
+              : "",
+            end_date: review.end_date
+              ? new Date(review.end_date).toISOString().substring(0, 16)
+              : "",
+            title: review.title || "",
+            content: review.content || "",
+            rating: review.rating?.toString() || "",
+            product_url: review.product_url || "",
+            period: periodValue || review.period || "",
+          });
+
+          // 이미지 URL이 있으면 이미지 배열에 추가
+          if (review.image_url) {
+            setImages([
+              {
+                file: new File([], "image.jpg"), // 더미 파일 객체
+                preview: review.image_url,
+              },
+            ]);
+          }
+        }
+
+        // 참여자 데이터 가져오기
+        const participantsResponse = await fetch(
+          `/api/reviews/${unwrappedParams.id}/participants`
+        );
+        if (!participantsResponse.ok) {
+          const errorData = await participantsResponse.json().catch(() => ({}));
+          console.error("참여자 데이터 요청 실패:", {
+            status: participantsResponse.status,
+            statusText: participantsResponse.statusText,
+            error: errorData.error || "알 수 없는 오류",
+          });
+          throw new Error(
+            `참여자 데이터를 가져오는데 실패했습니다. 상태: ${participantsResponse.status}`
+          );
+        }
+        const participantsData = await participantsResponse.json();
+        setParticipants(participantsData.participants || []);
+      } catch (err) {
+        console.error("데이터 로딩 오류:", err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "데이터를 불러오는 중 오류가 발생했습니다."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReviewData();
   }, [unwrappedParams.id]);
+
+  // startDate나 endDate가 변경될 때 period 자동 업데이트
+  useEffect(() => {
+    if (formData.start_date && formData.end_date) {
+      const startDate = new Date(formData.start_date);
+      const endDate = new Date(formData.end_date);
+
+      // 날짜 형식 변환 (YYYY.MM.DD 형식)
+      const formatDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}.${month}.${day}`;
+      };
+
+      const periodValue = `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
+      setFormData((prev) => ({ ...prev, period: periodValue }));
+    }
+  }, [formData.start_date, formData.end_date]);
 
   const handleViewReview = (participant: Participant) => {
     setSelectedParticipant(participant);
@@ -111,23 +238,203 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: API 연동
-    console.log('제품 수정:', { ...formData, images });
-    router.push('/admin/reviews');
+    setIsSubmitting(true);
+
+    try {
+      // 이미지 업로드 처리
+      let imageUrl = "";
+      if (images.length > 0 && images[0].file.size > 0) {
+        const formData = new FormData();
+        formData.append("file", images[0].file);
+
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("이미지 업로드에 실패했습니다.");
+        }
+
+        const uploadData = await uploadResponse.json();
+        imageUrl = uploadData.url;
+      } else if (images.length > 0) {
+        // 기존 이미지 URL 유지
+        imageUrl = images[0].preview;
+      }
+
+      // 리뷰 데이터 업데이트
+      const reviewData = {
+        platform: formData.platform,
+        product_name: formData.product_name,
+        option_name: formData.option_name,
+        price: formData.price,
+        shipping_fee: formData.shipping_fee,
+        seller: formData.seller,
+        participants: formData.participants,
+        status: formData.status,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        title: formData.title,
+        content: formData.content,
+        rating: formData.rating,
+        product_url: formData.product_url,
+        image_url: imageUrl,
+      };
+
+      console.log("제출하는 데이터:", reviewData);
+
+      const response = await fetch(`/api/reviews/${unwrappedParams.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reviewData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "리뷰 수정에 실패했습니다.");
+      }
+
+      const result = await response.json();
+      console.log("수정 결과:", result);
+
+      // 백엔드 응답에서 바로 리뷰 데이터 사용
+      if (result.review) {
+        const review = result.review;
+
+        // 시작일과 종료일로부터 이벤트 기간 계산
+        let periodValue = "";
+        if (review.start_date && review.end_date) {
+          const startDate = new Date(review.start_date);
+          const endDate = new Date(review.end_date);
+
+          // 날짜 형식 변환 (YYYY.MM.DD 형식)
+          const formatDate = (date: Date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}.${month}.${day}`;
+          };
+
+          periodValue = `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
+        }
+
+        // 상태 업데이트
+        setFormData({
+          platform: review.platform || "",
+          product_name: review.product_name || "",
+          option_name: review.option_name || "",
+          price: review.price?.toString() || "",
+          shipping_fee: review.shipping_fee?.toString() || "",
+          seller: review.seller || "",
+          participants: review.participants?.toString() || "",
+          status: review.status || "pending",
+          start_date: review.start_date
+            ? new Date(review.start_date).toISOString().substring(0, 16)
+            : "",
+          end_date: review.end_date
+            ? new Date(review.end_date).toISOString().substring(0, 16)
+            : "",
+          title: review.title || "",
+          content: review.content || "",
+          rating: review.rating?.toString() || "",
+          product_url: review.product_url || "",
+          period: periodValue || review.period || "",
+        });
+      } else {
+        // 백엔드에서 리뷰 데이터를 반환하지 않은 경우 별도로 조회
+        const refreshResponse = await fetch(
+          `/api/reviews/${unwrappedParams.id}`
+        );
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          const review = refreshData.review;
+
+          // 시작일과 종료일로부터 이벤트 기간 계산
+          let periodValue = "";
+          if (review.start_date && review.end_date) {
+            const startDate = new Date(review.start_date);
+            const endDate = new Date(review.end_date);
+
+            // 날짜 형식 변환 (YYYY.MM.DD 형식)
+            const formatDate = (date: Date) => {
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, "0");
+              const day = String(date.getDate()).padStart(2, "0");
+              return `${year}.${month}.${day}`;
+            };
+
+            periodValue = `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
+          }
+
+          // 상태 업데이트
+          setFormData({
+            platform: review.platform || "",
+            product_name: review.product_name || "",
+            option_name: review.option_name || "",
+            price: review.price?.toString() || "",
+            shipping_fee: review.shipping_fee?.toString() || "",
+            seller: review.seller || "",
+            participants: review.participants?.toString() || "",
+            status: review.status || "pending",
+            start_date: review.start_date
+              ? new Date(review.start_date).toISOString().substring(0, 16)
+              : "",
+            end_date: review.end_date
+              ? new Date(review.end_date).toISOString().substring(0, 16)
+              : "",
+            title: review.title || "",
+            content: review.content || "",
+            rating: review.rating?.toString() || "",
+            product_url: review.product_url || "",
+            period: periodValue || review.period || "",
+          });
+        }
+      }
+
+      toast({
+        title: "성공",
+        description: "리뷰가 성공적으로 수정되었습니다.",
+      });
+
+      // 성공 메시지 표시 후 리스트 페이지로 리다이렉트 제거
+      // setTimeout(() => {
+      //   router.push("/admin/reviews");
+      // }, 1500);
+    } catch (err) {
+      console.error("리뷰 수정 오류:", err);
+      toast({
+        title: "오류",
+        description:
+          err instanceof Error
+            ? err.message
+            : "리뷰 수정 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newImages = Array.from(e.target.files).map(file => ({
+      // 새 이미지로 교체 (기존 이미지 제거)
+      const newImages = Array.from(e.target.files).map((file) => ({
         file,
-        preview: URL.createObjectURL(file)
+        preview: URL.createObjectURL(file),
       }));
-      setImages(prev => [...prev, ...newImages]);
+
+      // 기존 미리보기 URL 해제
+      images.forEach((img) => URL.revokeObjectURL(img.preview));
+
+      setImages(newImages);
     }
   };
 
   const handleRemoveImage = (index: number) => {
-    setImages(prev => {
+    setImages((prev) => {
       const newImages = [...prev];
       URL.revokeObjectURL(newImages[index].preview);
       newImages.splice(index, 1);
@@ -139,11 +446,28 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
     fileInputRef.current?.click();
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner size="lg" className="text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">제품 수정</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6 w-full">
+        <div className="flex justify-end gap-4">
+          <Button type="button" variant="outline" onClick={() => router.back()}>
+            취소
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? <Spinner className="mr-2 h-4 w-4 text-white" /> : null}
+            수정
+          </Button>
+        </div>
         <div className="space-y-4">
           <Label>제품 이미지</Label>
           <input
@@ -151,7 +475,6 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             ref={fileInputRef}
             className="hidden"
             accept="image/*"
-            multiple
             onChange={handleImageChange}
           />
           <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
@@ -174,13 +497,15 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
                 </button>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={handleAddImage}
-              className="aspect-square border-2 border-dashed rounded-lg flex items-center justify-center hover:border-primary transition-colors"
-            >
-              <Plus className="h-8 w-8 text-muted-foreground" />
-            </button>
+            {images.length === 0 && (
+              <button
+                type="button"
+                onClick={handleAddImage}
+                className="aspect-square border-2 border-dashed rounded-lg flex items-center justify-center hover:border-primary transition-colors"
+              >
+                <Plus className="h-8 w-8 text-muted-foreground" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -189,15 +514,19 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             <Label htmlFor="platform">플랫폼</Label>
             <Select
               value={formData.platform}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, platform: value }))}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, platform: value }))
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="플랫폼 선택" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="coupang">쿠팡</SelectItem>
-                <SelectItem value="gmarket">지마켓</SelectItem>
-                <SelectItem value="11st">11번가</SelectItem>
+                <SelectItem value="네이버 영수증">네이버 영수증</SelectItem>
+                <SelectItem value="네이버 예약자">네이버 예약자</SelectItem>
+                <SelectItem value="카카오">카카오</SelectItem>
+                <SelectItem value="구글">구글</SelectItem>
+                <SelectItem value="쿠팡">쿠팡</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -206,7 +535,9 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             <Label htmlFor="status">상태</Label>
             <Select
               value={formData.status}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, status: value }))
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="상태 선택" />
@@ -220,21 +551,31 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="productName">제품명</Label>
+            <Label htmlFor="product_name">제품명</Label>
             <Input
-              id="productName"
-              value={formData.productName}
-              onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
+              id="product_name"
+              value={formData.product_name}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  product_name: e.target.value,
+                }))
+              }
               placeholder="제품명을 입력하세요"
             />
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="optionName">옵션명</Label>
+            <Label htmlFor="option_name">옵션명</Label>
             <Input
-              id="optionName"
-              value={formData.optionName}
-              onChange={(e) => setFormData(prev => ({ ...prev, optionName: e.target.value }))}
+              id="option_name"
+              value={formData.option_name}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  option_name: e.target.value,
+                }))
+              }
               placeholder="옵션명을 입력하세요"
             />
           </div>
@@ -245,18 +586,25 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               id="price"
               type="number"
               value={formData.price}
-              onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, price: e.target.value }))
+              }
               placeholder="가격을 입력하세요"
             />
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="shippingFee">배송비</Label>
+            <Label htmlFor="shipping_fee">배송비</Label>
             <Input
-              id="shippingFee"
+              id="shipping_fee"
               type="number"
-              value={formData.shippingFee}
-              onChange={(e) => setFormData(prev => ({ ...prev, shippingFee: e.target.value }))}
+              value={formData.shipping_fee}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  shipping_fee: e.target.value,
+                }))
+              }
               placeholder="배송비를 입력하세요"
             />
           </div>
@@ -266,7 +614,9 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             <Input
               id="seller"
               value={formData.seller}
-              onChange={(e) => setFormData(prev => ({ ...prev, seller: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, seller: e.target.value }))
+              }
               placeholder="판매자를 입력하세요"
             />
           </div>
@@ -277,28 +627,37 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               id="participants"
               type="number"
               value={formData.participants}
-              onChange={(e) => setFormData(prev => ({ ...prev, participants: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  participants: e.target.value,
+                }))
+              }
               placeholder="참여자 수를 입력하세요"
             />
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="startDate">시작일</Label>
+            <Label htmlFor="start_date">시작일</Label>
             <Input
-              id="startDate"
+              id="start_date"
               type="datetime-local"
-              value={formData.startDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+              value={formData.start_date}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, start_date: e.target.value }))
+              }
             />
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="endDate">종료일</Label>
+            <Label htmlFor="end_date">종료일</Label>
             <Input
-              id="endDate"
+              id="end_date"
               type="datetime-local"
-              value={formData.endDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+              value={formData.end_date}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, end_date: e.target.value }))
+              }
             />
           </div>
 
@@ -307,7 +666,9 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             <Input
               id="title"
               value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, title: e.target.value }))
+              }
               placeholder="제목을 입력하세요"
             />
           </div>
@@ -317,7 +678,9 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
             <Input
               id="content"
               value={formData.content}
-              onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, content: e.target.value }))
+              }
               placeholder="내용을 입력하세요"
             />
           </div>
@@ -328,22 +691,29 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
               id="rating"
               type="number"
               value={formData.rating}
-              onChange={(e) => setFormData(prev => ({ ...prev, rating: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, rating: e.target.value }))
+              }
               placeholder="평점을 입력하세요"
             />
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="productUrl">상품 URL</Label>
+            <Label htmlFor="product_url">상품 URL</Label>
             <div className="flex items-center gap-2">
               <Input
-                id="productUrl"
-                value={formData.productUrl}
-                onChange={(e) => setFormData(prev => ({ ...prev, productUrl: e.target.value }))}
+                id="product_url"
+                value={formData.product_url}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    product_url: e.target.value,
+                  }))
+                }
                 placeholder="상품 URL을 입력하세요"
                 className="flex-1"
               />
-              {formData.productUrl && (
+              {formData.product_url && (
                 <Button
                   type="button"
                   variant="outline"
@@ -352,7 +722,7 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
                   className="whitespace-nowrap"
                 >
                   <a
-                    href={formData.productUrl}
+                    href={formData.product_url}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -382,13 +752,13 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {participants.map((participant) => (
+                {participants.map((participant, index) => (
                   <TableRow key={participant.id}>
-                    <TableCell>{participant.id}</TableCell>
+                    <TableCell>{index + 1}</TableCell>
                     <TableCell>{participant.name}</TableCell>
                     <TableCell>{participant.phone}</TableCell>
-                    <TableCell>{participant.loginAccount}</TableCell>
-                    <TableCell>{participant.eventAccount}</TableCell>
+                    <TableCell>{participant.login_account}</TableCell>
+                    <TableCell>{participant.event_account}</TableCell>
                     <TableCell>{participant.nickname}</TableCell>
                     <TableCell>
                       <Button
@@ -406,31 +776,28 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
                     </TableCell>
                   </TableRow>
                 ))}
+                {participants.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                      등록된 참여자가 없습니다.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
         </div>
-
-        <div className="flex justify-end gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
-            취소
-          </Button>
-          <Button type="submit">
-            수정
-          </Button>
-        </div>
       </form>
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => {
-        if (!open) {
-          setIsModalOpen(false);
-          setSelectedParticipant(null);
-        }
-      }}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsModalOpen(false);
+            setSelectedParticipant(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>리뷰 인증 정보</DialogTitle>
@@ -448,11 +815,11 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
                 </div>
                 <div className="grid gap-2">
                   <Label>로그인계정</Label>
-                  <Input value={selectedParticipant.loginAccount} readOnly />
+                  <Input value={selectedParticipant.login_account} readOnly />
                 </div>
                 <div className="grid gap-2">
                   <Label>이벤트계정</Label>
-                  <Input value={selectedParticipant.eventAccount} readOnly />
+                  <Input value={selectedParticipant.event_account} readOnly />
                 </div>
                 <div className="grid gap-2">
                   <Label>닉네임</Label>
@@ -460,21 +827,24 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
                 </div>
                 <div className="grid gap-2">
                   <Label>리뷰 인증 이미지</Label>
-                  {selectedParticipant.reviewImage ? (
-                    <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
+                  {selectedParticipant.review_image ? (
+                    <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-full max-w-md mx-auto">
                       <Image
-                        src={selectedParticipant.reviewImage}
+                        src={selectedParticipant.review_image}
                         alt="리뷰 인증 이미지"
                         fill
-                        className="object-cover"
+                        className="object-contain"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
+                          target.src =
+                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
                         }}
                       />
                     </div>
                   ) : (
-                    <Input value="리뷰 이미지가 없습니다." readOnly />
+                    <div className="text-center p-4 border rounded-md">
+                      리뷰 이미지가 없습니다.
+                    </div>
                   )}
                 </div>
               </div>
@@ -484,4 +854,4 @@ export default function EditReviewPage({ params }: { params: Promise<{ id: strin
       </Dialog>
     </div>
   );
-} 
+}

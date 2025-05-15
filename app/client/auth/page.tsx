@@ -47,6 +47,12 @@ function AuthContent() {
         description: "해당 페이지는 로그인 후 이용 가능합니다.",
         variant: "destructive",
       });
+    } else if (messageParam === 'inactive_account') {
+      toast({
+        title: "비활성화된 계정",
+        description: "비활성화된 계정으로 접속할 수 없습니다. 관리자에게 문의하세요.",
+        variant: "destructive",
+      });
     }
   }, [messageParam, toast]);
 

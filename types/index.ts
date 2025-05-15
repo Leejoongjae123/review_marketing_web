@@ -1,13 +1,11 @@
 // 회원 타입
 export interface User {
   id: string;
-  name: string;
-  email: string;
+  name?: string;
+  email?: string;
   phone?: string;
-  role: 'admin' | 'provider' | 'client';
-  status: 'active' | 'inactive';
-  createdAt: string;
-  updatedAt: string;
+  role: "admin" | "provider" | "client";
+  status?: "active" | "inactive";
 }
 
 // 리뷰 타입
@@ -57,4 +55,17 @@ export interface Participation {
   reward: string;
   status: 'pending' | 'completed' | 'canceled';
   createdAt: string;
+}
+
+export interface Profile {
+  id: string;
+  updated_at?: string;
+  username?: string;
+  full_name?: string;
+  avatar_url?: string;
+  website?: string;
+  phone?: string;
+  role?: "admin" | "provider" | "client";
+  status?: "active" | "inactive";
+  email?: string;
 } 

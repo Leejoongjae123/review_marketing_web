@@ -13,11 +13,6 @@ export const adminMenuItems: MenuItem[] = [
     icon: "users",
   },
   {
-    title: "로그인/회원가입",
-    href: "/admin/auth",
-    icon: "log-in",
-  },
-  {
     title: "응모 관리",
     href: "/admin/history",
     icon: "history",

@@ -28,6 +28,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Plus, X, Eye } from "lucide-react";
 import Image from "next/image";
+import { toast } from "@/components/ui/use-toast";
 
 // 참여자 타입 정의
 interface Participant {
@@ -56,7 +57,7 @@ export default function AddReviewPage() {
     endDate: "",
     title: "",
     content: "",
-    rating: "",
+    rating: "3",
     productUrl: "",
   });
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
@@ -73,6 +74,7 @@ export default function AddReviewPage() {
   });
   const [newParticipantImages, setNewParticipantImages] = useState<{ file: File; preview: string }[]>([]);
   const newParticipantFileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleViewReview = (participant: Participant) => {
     setSelectedParticipant(participant);
@@ -81,9 +83,66 @@ export default function AddReviewPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: API 연동
-    console.log('이벤트 추가:', { ...formData, images });
-    router.push('/admin/reviews');
+    setIsSubmitting(true);
+    
+    try {
+      // FormData 객체 생성
+      const submitFormData = new FormData();
+      
+      // 기본 폼 데이터 추가
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          submitFormData.append(key, value.toString());
+        }
+      });
+      
+      // 이미지 파일 추가
+      images.forEach(image => {
+        submitFormData.append('images', image.file);
+      });
+      
+      // 참여자 데이터를 JSON 문자열로 변환하여 추가
+      if (participants.length > 0) {
+        submitFormData.append('participants_data', JSON.stringify(participants));
+      }
+      
+      // API 호출
+      const response = await fetch('/api/reviews', {
+        method: 'POST',
+        body: submitFormData,
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || '리뷰 등록에 실패했습니다.');
+      }
+      
+      if (result.warning) {
+        toast({
+          title: "일부 데이터만 저장됨",
+          description: result.warning,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "리뷰 등록 성공",
+          description: "리뷰가 성공적으로 등록되었습니다.",
+        });
+      }
+      
+      // 성공 시 리뷰 목록 페이지로 이동
+      router.push('/admin/reviews');
+    } catch (error) {
+      console.error('리뷰 등록 오류:', error);
+      toast({
+        title: "리뷰 등록 실패",
+        description: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,12 +172,32 @@ export default function AddReviewPage() {
     // 이벤트 계정 중복 체크
     const isDuplicate = participants.some(p => p.eventAccount === newParticipant.eventAccount);
     if (isDuplicate) {
-      alert('이미 등록된 이벤트 계정입니다.');
+      toast({
+        title: "중복된 계정",
+        description: "이미 등록된 이벤트 계정입니다.",
+        variant: "destructive",
+      });
       return;
     }
 
     const newId = Math.max(...participants.map(p => p.id), 0) + 1;
-    setParticipants([...participants, { ...newParticipant, id: newId }]);
+    
+    // 새 참여자 정보 생성
+    const participantToAdd = { 
+      ...newParticipant, 
+      id: newId 
+    };
+    
+    // 리뷰 이미지가 있는 경우 첫 번째 이미지 URL 저장
+    if (newParticipantImages.length > 0) {
+      // 실제 구현에서는 이미지 업로드 후 URL을 설정해야 함
+      // 일단 미리보기 URL을 임시로 사용
+      participantToAdd.reviewImage = newParticipantImages[0].preview;
+    }
+    
+    setParticipants([...participants, participantToAdd]);
+    
+    // 폼 초기화
     setNewParticipant({
       name: '',
       phone: '',
@@ -126,6 +205,7 @@ export default function AddReviewPage() {
       eventAccount: '',
       nickname: '',
     });
+    setNewParticipantImages([]);
     setIsAddModalOpen(false);
   };
 
@@ -150,6 +230,10 @@ export default function AddReviewPage() {
 
   const handleAddNewParticipantImage = () => {
     newParticipantFileInputRef.current?.click();
+  };
+
+  const handleRemoveParticipant = (id: number) => {
+    setParticipants(participants.filter(p => p.id !== id));
   };
 
   return (
@@ -208,9 +292,11 @@ export default function AddReviewPage() {
                 <SelectValue placeholder="플랫폼 선택" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="coupang">쿠팡</SelectItem>
-                <SelectItem value="gmarket">지마켓</SelectItem>
-                <SelectItem value="11st">11번가</SelectItem>
+                <SelectItem value="네이버 영수증">네이버 영수증</SelectItem>
+                <SelectItem value="네이버 예약자">네이버 예약자</SelectItem>
+                <SelectItem value="카카오">카카오</SelectItem>
+                <SelectItem value="구글">구글</SelectItem>
+                <SelectItem value="쿠팡">쿠팡</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -329,9 +415,11 @@ export default function AddReviewPage() {
             <Input
               id="rating"
               type="number"
+              min="1"
+              max="5"
               value={formData.rating}
               onChange={(e) => setFormData(prev => ({ ...prev, rating: e.target.value }))}
-              placeholder="평점을 입력하세요"
+              placeholder="평점을 입력하세요 (1-5)"
             />
           </div>
 
@@ -366,7 +454,7 @@ export default function AddReviewPage() {
           </div>
         </div>
 
-
+        {/* 참여자 섹션 추가 */}
         
 
         <div className="flex justify-end gap-4">
@@ -374,11 +462,12 @@ export default function AddReviewPage() {
             type="button"
             variant="outline"
             onClick={() => router.back()}
+            disabled={isSubmitting}
           >
             취소
           </Button>
-          <Button type="submit">
-            등록
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "등록 중..." : "등록"}
           </Button>
         </div>
       </form>

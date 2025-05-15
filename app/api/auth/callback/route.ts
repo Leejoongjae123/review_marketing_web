@@ -128,7 +128,9 @@ export async function GET(request: Request) {
         }
         
         // 성공적으로 처리된 경우 지정된 redirect_to 경로로 리다이렉션
-        return NextResponse.redirect(new URL(`/${redirectTo}`, url.origin));
+        const redirectUrl = new URL(`/${redirectTo}`, url.origin);
+        console.log("redirectUrl", redirectUrl);
+        return NextResponse.redirect(redirectUrl);
       } catch (error: any) {
         console.error('프로필 처리 중 예외 발생:', error.message);
         // 에러가 발생해도 지정된 redirect_to 경로로 이동

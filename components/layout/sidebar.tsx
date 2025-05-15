@@ -38,30 +38,65 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   // 인증 확인 로딩 상태
   const [loading, setLoading] = useState<boolean>(true);
+  // 인증 상태 확인을 위한 상태 추가
+  const [userRole, setUserRole] = useState<string | null>(null);
   
   // 인증 상태 확인
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/auth/check-auth');
-        
-        if (!response.ok) {
-          throw new Error('인증 상태 확인 실패');
+  const checkAuth = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/auth/check-auth', {
+        // 캐시 방지를 위한 설정 추가
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
-        
-        const data = await response.json();
-        setIsAuthenticated(data.authenticated);
-      } catch (error) {
-        console.error('인증 상태 확인 실패:', error);
-        setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
+      });
+      
+      if (!response.ok) {
+        throw new Error('인증 상태 확인 실패');
       }
+      
+      const data = await response.json();
+      console.log("data:",data);
+      setIsAuthenticated(data.authenticated);
+      setUserRole(data.userRole);
+      
+      
+    } catch (error) {
+      console.error('인증 상태 확인 실패:', error);
+      setIsAuthenticated(false);
+      setUserRole(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // 로그인 상태 변경 감지를 위한 useEffect 설정
+  useEffect(() => {
+    // 초기 로드시 인증 확인
+    checkAuth();
+    
+    // 페이지 포커스될 때마다 인증 상태 다시 확인
+    const handleFocus = () => {
+      checkAuth();
     };
     
-    checkAuth();
-  }, []);
+    // 경로 변경시 인증 상태 다시 확인
+    const handleRouteChange = () => {
+      checkAuth();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleFocus); // localStorage 변경 감지
+    
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleFocus);
+    };
+  }, [pathname, role]);
   
   // 역할 변경 시 해당 역할의 auth 페이지로 이동
   const handleRoleChange = (value: string) => {
@@ -79,7 +114,10 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
       
       if (response.ok) {
         setIsAuthenticated(false);
+        setUserRole(null);
         router.push(`/${role}/auth`);
+        // 상태 변경을 알림
+        window.dispatchEvent(new Event('storage'));
       } else {
         console.error('로그아웃 실패:', await response.text());
       }
@@ -90,7 +128,7 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
 
   // 로그인 페이지로 이동
   const handleLogin = () => {
-    router.push(`/${role}/auth`);
+    router.push(`/${selectedRole}/auth`);
   };
 
   // 회원가입 페이지로 이동
@@ -129,6 +167,7 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
   const getRoleDisplayName = (role: string) => {
     switch (role) {
       case "admin": return "관리자";
+      case "master": return "관리자";
       case "provider": return "광고주";
       case "client": return "리뷰어";
       default: return "";
@@ -141,14 +180,21 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
     
     if (isAuthenticated) {
       return (
-        <Button 
-          variant="outline"
-          className="border-2 border-black w-full flex items-center justify-center gap-2"
-          onClick={handleLogout}
-        >
-          <LogOut className="h-4 w-4" />
-          로그아웃
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button 
+            variant="outline"
+            className="border-2 border-black w-full flex items-center justify-center gap-2"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            로그아웃
+          </Button>
+          {userRole && (
+            <div className="text-sm text-center text-muted-foreground">
+              현재 접속: {getRoleDisplayName(userRole)}
+            </div>
+          )}
+        </div>
       );
     } else {
       return (
@@ -161,7 +207,6 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
             <LogIn className="h-4 w-4" />
             로그인
           </Button>
-          
         </div>
       );
     }

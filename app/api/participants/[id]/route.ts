@@ -1,38 +1,41 @@
-import { createClient } from '@/utils/supabase/server';
-import { NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
+  const id = await params.id;
+  
+  if (!id) {
+    return NextResponse.json(
+      { error: '삭제할 참가자 ID가 제공되지 않았습니다.' },
+      { status: 400 }
+    );
+  }
+
   try {
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
-    
-    if (!id) {
-      return NextResponse.json({ error: 'ID is required' }, { status: 400 });
-    }
-    
-    const supabase = await createClient();
-    
-    // 삭제 전 권한 확인 로직이 필요하다면 여기에 추가
-    
-    // 레코드 삭제
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+
     const { error } = await supabase
       .from('review_participants')
       .delete()
       .eq('id', id);
-    
+
     if (error) {
-      console.error('Error deleting participant:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      throw error;
     }
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Server error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error('Error deleting participant:', error);
+    return NextResponse.json(
+      { error: '참가자 삭제 중 오류가 발생했습니다.' },
+      { status: 500 }
+    );
   }
 } 

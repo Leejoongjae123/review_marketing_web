@@ -1,8 +1,6 @@
 'use client'
-import React, { useState } from "react";
-import { mockReviews } from "@/lib/mock-data";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Review } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronLeft, ChevronRight, Download, Plus, Edit, Trash2 } from "lucide-react";
@@ -25,48 +23,103 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { createClient } from "@/utils/supabase/client";
+
+// Review 타입 정의
+interface Review {
+  id: string | number;
+  title: string;
+  content: string;
+  rating: number;
+  status: string;
+  author_id?: string;
+  author_name?: string;
+  product_id?: string;
+  product_name: string;
+  platform: string;
+  image_url?: string;
+  option_name?: string;
+  price?: number;
+  shipping_fee?: number;
+  seller?: string;
+  participants?: number;
+  start_date: string;
+  end_date: string;
+  period?: string;
+  product_url?: string;
+  created_at: string;
+  updated_at?: string;
+}
 
 export default function AdminReviewsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchCategory, setSearchCategory] = useState("title");
+  const [searchCategory, setSearchCategory] = useState("product_name");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [pageSize, setPageSize] = useState(10);
-  const [filteredReviews, setFilteredReviews] = useState(mockReviews);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedReviews, setSelectedReviews] = useState<Set<string>>(new Set());
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [selectedReviews, setSelectedReviews] = useState<Set<string | number>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null);
+  const [reviewToDelete, setReviewToDelete] = useState<string | number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  const fetchReviews = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/admin/reviews?searchCategory=${searchCategory}&searchTerm=${encodeURIComponent(searchTerm)}&startDate=${startDate}&endDate=${endDate}&page=${currentPage}&pageSize=${pageSize}`
+      );
+      
+      if (!response.ok) {
+        console.log('데이터를 불러오는데 실패했습니다');
+      }
+      
+      const data = await response.json();
+      setReviews(data.reviews);
+      setTotalCount(data.totalCount);
+      setTotalPages(data.totalPages);
+    } catch (error) {
+      console.error('리뷰 데이터를 불러오는데 실패했습니다:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviews();
+  }, [currentPage, pageSize]);
+
+  // 페이지 진입 시나 포커스가 돌아올 때 데이터 리로드
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchReviews();
+    };
+
+    // 페이지가 로드될 때 데이터 로드
+    fetchReviews();
+    
+    // 브라우저 창이 포커스를 다시 얻었을 때 데이터 리로드
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const handleSearch = () => {
-    if (!searchTerm.trim() && !startDate && !endDate) {
-      setFilteredReviews(mockReviews);
-      return;
-    }
-    
-    const filtered = mockReviews.filter(review => {
-      const matchesSearch = !searchTerm.trim() || 
-        (searchCategory in review && 
-         typeof review[searchCategory as keyof Review] === 'string' &&
-         (review[searchCategory as keyof Review] as string).toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      const matchesDate = (!startDate || new Date(review.createdAt) >= new Date(startDate)) &&
-                         (!endDate || new Date(review.createdAt) <= new Date(endDate));
-      
-      return matchesSearch && matchesDate;
-    });
-    
-    setFilteredReviews(filtered);
     setCurrentPage(1);
+    fetchReviews();
   };
 
   // 페이지네이션 계산
-  const totalPages = Math.ceil(filteredReviews.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedReviews = filteredReviews.slice(startIndex, startIndex + pageSize);
 
-  const getStatusStyle = (status: Review["status"]) => {
+  const getStatusStyle = (status: string) => {
     switch (status) {
       case "approved":
         return "bg-green-500 text-white px-2 py-1 rounded-md";
@@ -77,7 +130,7 @@ export default function AdminReviewsPage() {
     }
   };
 
-  const getStatusText = (status: Review["status"]) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case "approved":
         return "승인됨";
@@ -90,14 +143,14 @@ export default function AdminReviewsPage() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allIds = paginatedReviews.map(review => review.id);
+      const allIds = reviews.map(review => review.id);
       setSelectedReviews(new Set(allIds));
     } else {
       setSelectedReviews(new Set());
     }
   };
 
-  const handleSelectReview = (reviewId: string, checked: boolean) => {
+  const handleSelectReview = (reviewId: string | number, checked: boolean) => {
     const newSelected = new Set(selectedReviews);
     if (checked) {
       newSelected.add(reviewId);
@@ -112,17 +165,32 @@ export default function AdminReviewsPage() {
     console.log('엑셀 다운로드');
   };
 
-  const handleDeleteReview = (id: string) => {
+  const handleDeleteReview = (id: string | number) => {
     setReviewToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (reviewToDelete) {
-      // TODO: API 연동
-      console.log('제품 삭제:', reviewToDelete);
-      setDeleteDialogOpen(false);
-      setReviewToDelete(null);
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/admin/reviews/${reviewToDelete}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error('삭제에 실패했습니다');
+        }
+        
+        // 삭제 후 리스트 새로고침
+        await fetchReviews();
+        setDeleteDialogOpen(false);
+        setReviewToDelete(null);
+      } catch (error) {
+        console.error('리뷰 삭제 중 오류 발생:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -130,7 +198,7 @@ export default function AdminReviewsPage() {
     router.push('/admin/reviews/add');
   };
 
-  const handleEditProduct = (id: string) => {
+  const handleEditProduct = (id: string | number) => {
     router.push(`/admin/reviews/${id}`);
   };
 
@@ -147,9 +215,11 @@ export default function AdminReviewsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="title">제목</SelectItem>
-              <SelectItem value="productName">제품</SelectItem>
-              <SelectItem value="authorName">작성자</SelectItem>
+              <SelectItem value="product_name">제품</SelectItem>
+              <SelectItem value="author_name">작성자</SelectItem>
               <SelectItem value="content">내용</SelectItem>
+              <SelectItem value="platform">플랫폼</SelectItem>
+              <SelectItem value="seller">판매자</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -184,7 +254,11 @@ export default function AdminReviewsPage() {
       </div>
       
       <div className="flex justify-end gap-2 mb-4">
-        <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+        <Select value={pageSize.toString()} onValueChange={(value) => {
+          setPageSize(Number(value));
+          setCurrentPage(1);
+          fetchReviews();
+        }}>
           <SelectTrigger className="w-32">
             <SelectValue placeholder="페이지 크기" />
           </SelectTrigger>
@@ -204,75 +278,93 @@ export default function AdminReviewsPage() {
         </Button>
       </div>
 
-      <div className="rounded-md border overflow-x-auto">
-        <table className="w-full min-w-[1200px]">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="h-12 px-4 text-center align-middle font-medium w-12">
-                <Checkbox
-                  checked={selectedReviews.size === paginatedReviews.length}
-                  onCheckedChange={handleSelectAll}
-                />
-              </th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">제품명</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">옵션명</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">가격</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">배송비</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">판매자</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">참여자</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-24">기간</th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-32">관리</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedReviews.map((review, index) => (
-              <tr key={review.id} className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => handleEditProduct(review.id)}>
-                <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+      {loading ? (
+        <div className="flex justify-center items-center h-40">
+          <p>데이터를 불러오는 중...</p>
+        </div>
+      ) : (
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full min-w-[1200px]">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="h-12 px-4 text-center align-middle font-medium w-12">
                   <Checkbox
-                    checked={selectedReviews.has(review.id)}
-                    onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
+                    checked={selectedReviews.size === reviews.length && reviews.length > 0}
+                    onCheckedChange={handleSelectAll}
                   />
-                </td>
-                <td className="p-4 text-center">{startIndex + index + 1}</td>
-                <td className="p-4 text-center">{review.platform}</td>
-                <td className="p-4 text-center">
-                  <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
-                </td>
-                <td className="p-4 text-center">{review.productName}</td>
-                <td className="p-4 text-center">{review.optionName}</td>
-                <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
-                <td className="p-4 text-center">{review.shippingFee?.toLocaleString() ?? '0'}원</td>
-                <td className="p-4 text-center">{review.seller}</td>
-                <td className="p-4 text-center">{review.participants}</td>
-                <td className="p-4 text-center">{review.period}</td>
-                <td className="p-4 text-center">
-                  <div className="flex justify-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteReview(review.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                </td>
+                </th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">제품명</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">옵션명</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">가격</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">배송비</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">판매자</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">참여자</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">기간</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">관리</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {reviews.map((review, index) => (
+                <tr key={review.id} className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => handleEditProduct(review.id)}>
+                  <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedReviews.has(review.id)}
+                      onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
+                    />
+                  </td>
+                  <td className="p-4 text-center">{startIndex + index + 1}</td>
+                  <td className="p-4 text-center">{review.platform}</td>
+                  <td className="p-4 text-center">
+                    {review.image_url ? (
+                      <img 
+                        src={review.image_url} 
+                        alt={review.product_name} 
+                        className="w-16 h-16 object-cover mx-auto rounded-md"
+                      />
+                    ) : (
+                      <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
+                    )}
+                  </td>
+                  <td className="p-4 text-center">{review.product_name}</td>
+                  <td className="p-4 text-center">{review.option_name}</td>
+                  <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
+                  <td className="p-4 text-center">{review.shipping_fee?.toLocaleString() ?? '0'}원</td>
+                  <td className="p-4 text-center">{review.seller}</td>
+                  <td className="p-4 text-center">{review.participants}</td>
+                  <td className="p-4 text-center">
+                    {review.start_date && review.end_date ? 
+                      `${new Date(review.start_date).toLocaleDateString()} - ${new Date(review.end_date).toLocaleDateString()}` : 
+                      review.period || '-'}
+                  </td>
+                  <td className="p-4 text-center">
+                    <div className="flex justify-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteReview(review.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       
       {/* 페이지네이션 */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          전체 {filteredReviews.length}개 항목 중 {startIndex + 1}-{Math.min(startIndex + pageSize, filteredReviews.length)}개 표시
+          전체 {totalCount}개 항목 중 {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)}개 표시
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -285,17 +377,29 @@ export default function AdminReviewsPage() {
             이전
           </Button>
           <div className="flex items-center">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                className="w-9"
-                onClick={() => setCurrentPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let pageNumber;
+              if (totalPages <= 5) {
+                pageNumber = i + 1;
+              } else if (currentPage <= 3) {
+                pageNumber = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNumber = totalPages - 4 + i;
+              } else {
+                pageNumber = currentPage - 2 + i;
+              }
+              return (
+                <Button
+                  key={pageNumber}
+                  variant={currentPage === pageNumber ? "default" : "outline"}
+                  size="sm"
+                  className="w-9"
+                  onClick={() => setCurrentPage(pageNumber)}
+                >
+                  {pageNumber}
+                </Button>
+              );
+            })}
           </div>
           <Button
             variant="outline"
