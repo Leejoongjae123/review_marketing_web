@@ -128,8 +128,6 @@ export const mockUsers: User[] = [
     phone: "010-1234-5678",
     role: "client",
     status: "active",
-    createdAt: "2023-01-10T08:00:00Z",
-    updatedAt: "2023-01-10T08:00:00Z",
   },
   {
     id: "user2",
@@ -138,8 +136,6 @@ export const mockUsers: User[] = [
     phone: "010-2345-6789",
     role: "client",
     status: "active",
-    createdAt: "2023-01-15T09:30:00Z",
-    updatedAt: "2023-01-15T09:30:00Z",
   },
   {
     id: "user3",
@@ -148,8 +144,6 @@ export const mockUsers: User[] = [
     phone: "010-3456-7890",
     role: "client",
     status: "active",
-    createdAt: "2023-02-05T14:20:00Z",
-    updatedAt: "2023-02-05T14:20:00Z",
   },
   {
     id: "user4",
@@ -158,8 +152,6 @@ export const mockUsers: User[] = [
     phone: "010-4567-8901",
     role: "provider",
     status: "active",
-    createdAt: "2023-02-20T11:45:00Z",
-    updatedAt: "2023-02-20T11:45:00Z",
   },
   {
     id: "user5",
@@ -168,8 +160,6 @@ export const mockUsers: User[] = [
     phone: "010-5678-9012",
     role: "admin",
     status: "active",
-    createdAt: "2023-03-01T16:15:00Z",
-    updatedAt: "2023-03-01T16:15:00Z",
   },
 ];
 

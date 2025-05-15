@@ -4,18 +4,17 @@ import { createClient } from "@/utils/supabase/server";
 // 리뷰 삭제 API
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const {id} = await params;
-    const reviewId = id;
+    const { id } = await params;
     const supabase = await createClient();
 
     // 리뷰 삭제
     const { error } = await supabase
       .from("reviews")
       .delete()
-      .eq("id", reviewId);
+      .eq("id", id);
 
     if (error) {
       console.error("Error deleting review:", error);
