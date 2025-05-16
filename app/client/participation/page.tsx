@@ -48,17 +48,19 @@ import { createClient } from "@/utils/supabase/client";
 // 응모자 정보 타입 정의
 interface Participant {
   id: string;
-  review_id: {
+  review_id: string;
+  reviews: {
     id: string;
-    product_name: string;
+    title: string;
     platform: string;
+    product_name: string;
     option_name: string;
     price: number;
     shipping_fee: number;
     seller: string;
     period: string;
-    image_url: string;
-    product_url: string;
+    image_url?: string;
+    product_url?: string;
   };
   name: string;
   phone: string;
@@ -116,9 +118,9 @@ export default function ClientParticipationPage() {
         return;
       }
       
-      setParticipants(data.data || []);
-      setTotalCount(data.count || 0);
-      setTotalPages(data.totalPages || 1);
+      setParticipants(data.participants);
+      setTotalCount(data.totalCount);
+      setTotalPages(data.totalPages);
     } catch (error) {
       console.log("Failed to fetch participants:", error);
     } finally {
@@ -196,12 +198,12 @@ export default function ClientParticipationPage() {
       
       const excelData = data.participants?.map((p: Participant, idx: number) => [
         (idx + 1).toString(),
-        p.review_id?.platform || '정보 없음',
-        p.review_id?.product_name || '정보 없음',
-        p.review_id?.option_name || '정보 없음',
-        p.review_id?.price ? p.review_id.price.toLocaleString() + "원" : '0원',
-        p.review_id?.shipping_fee ? p.review_id.shipping_fee.toLocaleString() + "원" : '0원',
-        p.review_id?.seller || '정보 없음',
+        p.reviews?.platform || '정보 없음',
+        p.reviews?.product_name || '정보 없음',
+        p.reviews?.option_name || '정보 없음',
+        p.reviews?.price ? p.reviews.price.toLocaleString() + "원" : '0원',
+        p.reviews?.shipping_fee ? p.reviews.shipping_fee.toLocaleString() + "원" : '0원',
+        p.reviews?.seller || '정보 없음',
         p.name,
         p.phone,
         p.login_account,
@@ -353,7 +355,7 @@ export default function ClientParticipationPage() {
                   onClick={() => handleRowClick(participant)}
                 >
                   <TableCell>{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
-                  <TableCell>{participant.review_id?.platform || '정보 없음'}</TableCell>
+                  <TableCell>{participant.reviews?.platform || '정보 없음'}</TableCell>
                   <TableCell>
                     {participant.review_image ? (
                       <div className="relative w-10 h-10 rounded-md overflow-hidden">
@@ -364,10 +366,10 @@ export default function ClientParticipationPage() {
                           className="object-cover"
                         />
                       </div>
-                    ) : participant.review_id?.image_url ? (
+                    ) : participant.reviews?.image_url ? (
                       <div className="relative w-10 h-10 rounded-md overflow-hidden">
                         <Image
-                          src={participant.review_id.image_url}
+                          src={participant.reviews.image_url}
                           alt="제품 이미지"
                           fill
                           className="object-cover"
@@ -377,7 +379,7 @@ export default function ClientParticipationPage() {
                       <span className="text-muted-foreground">없음</span>
                     )}
                   </TableCell>
-                  <TableCell>{participant.review_id?.product_name || '정보 없음'}</TableCell>
+                  <TableCell>{participant.reviews?.product_name || '정보 없음'}</TableCell>
                   <TableCell>{participant.event_account || '정보 없음'}</TableCell>
                   <TableCell>{new Date(participant.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
@@ -398,7 +400,7 @@ export default function ClientParticipationPage() {
 
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          전체 {totalCount}개 항목 중 {(currentPage - 1) * itemsPerPage + 1}-
+          전체 {totalCount}개 항목 중 {totalCount > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}-
           {Math.min(currentPage * itemsPerPage, totalCount)}개 표시
         </div>
         <div className="flex items-center space-x-2">
@@ -472,31 +474,31 @@ export default function ClientParticipationPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>플랫폼</Label>
-                  <Input value={selectedParticipant.review_id?.platform || '정보 없음'} readOnly />
+                  <Input value={selectedParticipant.reviews?.platform || '정보 없음'} readOnly />
                 </div>
                 <div className="grid gap-2">
                   <Label>제품명</Label>
-                  <Input value={selectedParticipant.review_id?.product_name || '정보 없음'} readOnly />
+                  <Input value={selectedParticipant.reviews?.product_name || '정보 없음'} readOnly />
                 </div>
                 <div className="grid gap-2">
                   <Label>옵션명</Label>
-                  <Input value={selectedParticipant.review_id?.option_name || "없음"} readOnly />
+                  <Input value={selectedParticipant.reviews?.option_name || "없음"} readOnly />
                 </div>
                 <div className="grid gap-2">
                   <Label>가격</Label>
-                  <Input value={`${selectedParticipant.review_id?.price?.toLocaleString() || 0}원`} readOnly />
+                  <Input value={`${selectedParticipant.reviews?.price?.toLocaleString() || 0}원`} readOnly />
                 </div>
                 <div className="grid gap-2">
                   <Label>배송비</Label>
-                  <Input value={`${selectedParticipant.review_id?.shipping_fee?.toLocaleString() || 0}원`} readOnly />
+                  <Input value={`${selectedParticipant.reviews?.shipping_fee?.toLocaleString() || 0}원`} readOnly />
                 </div>
                 <div className="grid gap-2">
                   <Label>판매지</Label>
-                  <Input value={selectedParticipant.review_id?.seller || "없음"} readOnly />
+                  <Input value={selectedParticipant.reviews?.seller || "없음"} readOnly />
                 </div>
                 <div className="grid gap-2">
                   <Label>기간</Label>
-                  <Input value={selectedParticipant.review_id?.period || "없음"} readOnly />
+                  <Input value={selectedParticipant.reviews?.period || "없음"} readOnly />
                 </div>
                 <div className="grid gap-2">
                   <Label>등록일</Label>
@@ -531,10 +533,10 @@ export default function ClientParticipationPage() {
                       }}
                     />
                   </div>
-                ) : selectedParticipant.review_id?.image_url ? (
+                ) : selectedParticipant.reviews?.image_url ? (
                   <div className="relative aspect-square rounded-lg overflow-hidden border mt-2 w-32">
                     <Image
-                      src={selectedParticipant.review_id.image_url}
+                      src={selectedParticipant.reviews.image_url}
                       alt="제품 이미지"
                       fill
                       className="object-cover"

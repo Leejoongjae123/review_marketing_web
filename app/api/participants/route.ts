@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
     }
     
     return NextResponse.json({ 
-      data, 
-      count, 
+      participants: data, 
+      totalCount: count || 0, 
       page,
       pageSize,
       totalPages: Math.ceil((count || 0) / pageSize)
