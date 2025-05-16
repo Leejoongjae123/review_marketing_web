@@ -116,9 +116,9 @@ export default function ClientParticipationPage() {
         return;
       }
       
-      setParticipants(data.participants);
-      setTotalCount(data.totalCount);
-      setTotalPages(data.totalPages);
+      setParticipants(data.data || []);
+      setTotalCount(data.count || 0);
+      setTotalPages(data.totalPages || 1);
     } catch (error) {
       console.log("Failed to fetch participants:", error);
     } finally {
@@ -194,7 +194,7 @@ export default function ClientParticipationPage() {
         "등록일"
       ];
       
-      const excelData = data.participants.map((p: Participant, idx: number) => [
+      const excelData = data.participants?.map((p: Participant, idx: number) => [
         (idx + 1).toString(),
         p.review_id?.platform || '정보 없음',
         p.review_id?.product_name || '정보 없음',
@@ -339,14 +339,14 @@ export default function ClientParticipationPage() {
                   데이터를 불러오는 중입니다...
                 </TableCell>
               </TableRow>
-            ) : participants.length === 0 ? (
+            ) : participants?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-10">
                   응모 이력이 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
-              participants.map((participant, index) => (
+              participants?.map((participant, index) => (
                 <TableRow
                   key={participant.id}
                   className="cursor-pointer hover:bg-muted/50"
