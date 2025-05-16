@@ -105,21 +105,24 @@ export default function AdminHistoryPage() {
 
       const response = await fetch(`/api/participants?${params.toString()}`);
       const data: ApiResponse = await response.json();
+      
+      console.log('API Response:', data);
 
       if (data.error) {
         throw new Error(data.error);
       }
 
-      setParticipants(data.data);
-      setTotalCount(data.count);
-      setTotalPages(data.totalPages);
+      setParticipants(data.data || []);
+      setTotalCount(data.count || 0);
+      setTotalPages(data.totalPages || 1);
     } catch (error) {
-      console.error('Error fetching participants:', error);
+      console.log('Error details:', error);
       toast({
         title: "오류",
         description: "데이터를 불러오는 중 오류가 발생했습니다.",
         variant: "destructive",
       });
+      setParticipants([]);
     } finally {
       setLoading(false);
     }
@@ -176,6 +179,7 @@ export default function AdminHistoryPage() {
     link.click();
     document.body.removeChild(link);
   };
+  console.log("participants", participants);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation(); // 모달이 열리는 것을 방지
@@ -321,7 +325,7 @@ export default function AdminHistoryPage() {
                   데이터를 불러오는 중...
                 </TableCell>
               </TableRow>
-            ) : participants.length === 0 ? (
+            ) : !participants || participants.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-4">
                   데이터가 없습니다.
