@@ -161,7 +161,7 @@ export async function POST(req: Request) {
     const formData = await req.json();
     console.log('formData: ', formData)
     // 사용자 정보 가져오기
-    const userData = session.user.user_metadata || {};
+    const userData = session.user;
     console.log('userData: ', userData)
     
 
@@ -176,7 +176,7 @@ export async function POST(req: Request) {
         // Supabase Storage에 업로드
         const fileName = `review-image-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
         const { data, error } = await supabase.storage
-          .from("review-images")
+          .from("reviews")
           .upload(`public/${fileName}`, buffer, {
             contentType: "image/jpeg",
             upsert: false,
@@ -188,16 +188,15 @@ export async function POST(req: Request) {
 
         // 업로드된 이미지 URL 저장
         const { data: urlData } = supabase.storage
-          .from("review-images")
+          .from("reviews")
           .getPublicUrl(`public/${fileName}`);
 
         imageUrls.push(urlData.publicUrl);
       }
     }
-
+    console.log('imageUrls: ', imageUrls)
     // 리뷰 데이터 저장
     const reviewData = {
-      user_id: userId,
       platform: formData.platform,
       product_name: formData.productName,
       option_name: formData.optionName,
@@ -214,8 +213,9 @@ export async function POST(req: Request) {
       content: formData.content,
       rating: formData.rating ? parseInt(formData.rating) : 3,
       product_url: formData.productUrl,
-      product_image: imageUrls.length > 0 ? imageUrls[0] : null,
+      image_url: imageUrls.length > 0 ? imageUrls[0] : null,
     };
+    console.log('reviewData: ', reviewData)
 
     // 리뷰 데이터 저장
     const { data: reviewResult, error: reviewError } = await supabase
@@ -223,10 +223,12 @@ export async function POST(req: Request) {
       .insert(reviewData)
       .select("id")
       .single();
+    console.log('reviewResult: ', reviewResult)
+    console.log('reviewError: ', reviewError)
 
     if (reviewError || !reviewResult) {
       return NextResponse.json(
-        { error: "리뷰 등록에 실패했습니다." },
+        { error: "리뷰 등록에 실패했습니다.{}" },
         { status: 500 }
       );
     }
@@ -234,38 +236,7 @@ export async function POST(req: Request) {
     const reviewId = reviewResult.id;
 
     // 리뷰 참가자 테이블에 데이터 추가
-    const { error: participantError } = await supabase
-      .from("review_participants")
-      .insert({
-        review_id: reviewId,
-        reviewer_id: userId,
-        name: userData.full_name || "리뷰어",
-        phone: userData.phone || "",
-        login_account: session.user.email || "",
-        event_account: session.user.email || "",
-        nickname: userData.username || "리뷰어",
-        review_image: imageUrls.length > 0 ? imageUrls[0] : null,
-      });
-
-    if (participantError) {
-      // 참가자 등록 실패 시 로그 기록
-      console.log("리뷰 참가자 등록 중 오류:", participantError);
-      console.log("참가자 데이터:", {
-        review_id: reviewId,
-        reviewer_id: userId,
-        user_data: userData,
-      });
-
-      // 여기서 리뷰를 삭제하지는 않지만, 참가자 등록 실패를 보고합니다
-      return NextResponse.json(
-        {
-          warning: "리뷰는 등록되었지만 참가자 정보 등록에 실패했습니다.",
-          reviewId: reviewId,
-          success: true,
-        },
-        { status: 201 }
-      );
-    }
+    
 
     return NextResponse.json({ 
       success: true,

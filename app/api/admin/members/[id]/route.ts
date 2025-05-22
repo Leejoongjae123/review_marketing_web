@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
+
 // 특정 회원 정보 조회
 export async function GET(
   request: Request,
@@ -188,4 +189,22 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> {
+  const supabase = await createClient();
+  const { id } = await params;
+  const { newPassword } = await request.json();
+
+  if (!newPassword) {
+    return NextResponse.json({ error: '새 비밀번호를 입력해주세요.' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase.auth.admin.updateUserById(id, { password: newPassword });
+
+  if (error) {
+    return NextResponse.json({ error: '비밀번호 변경에 실패했습니다.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ message: '비밀번호가 성공적으로 변경되었습니다.' });
 } 

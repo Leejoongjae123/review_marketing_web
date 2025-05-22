@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
+import { Spinner } from "@/components/ui/spinner";
 
 // 페이지 컴포넌트에서 필요한 UserHistory 타입 선언
 interface ReviewParticipant {
@@ -63,9 +64,9 @@ interface ReviewParticipant {
 }
 
 interface ApiResponse {
-  data: ReviewParticipant[];
-  count: number;
-  page: number;
+  participants: ReviewParticipant[];
+  totalCount: number;
+  currentPage: number;
   pageSize: number;
   totalPages: number;
   error?: string;
@@ -103,7 +104,7 @@ export default function AdminHistoryPage() {
         params.append('searchCategory', searchCategory);
       }
 
-      const response = await fetch(`/api/participants?${params.toString()}`);
+      const response = await fetch(`/api/admin/participants?${params.toString()}`);
       const data: ApiResponse = await response.json();
       
       console.log('API Response:', data);
@@ -112,8 +113,8 @@ export default function AdminHistoryPage() {
         throw new Error(data.error);
       }
 
-      setParticipants(data.data || []);
-      setTotalCount(data.count || 0);
+      setParticipants(data.participants || []);
+      setTotalCount(data.totalCount || 0);
       setTotalPages(data.totalPages || 1);
     } catch (error) {
       console.log('Error details:', error);
@@ -304,72 +305,74 @@ export default function AdminHistoryPage() {
           </SelectContent>
         </Select>
       </div>
-      <div className="border rounded-lg overflow-x-auto">
-        <Table className="w-full min-w-[800px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[80px]">번호</TableHead>
-              <TableHead className="w-[120px]">이름</TableHead>
-              <TableHead className="w-[150px]">연락처</TableHead>
-              <TableHead className="w-[200px]">이메일</TableHead>
-              <TableHead className="w-[200px]">참여계정</TableHead>
-              <TableHead className="w-[200px]">참여 이벤트</TableHead>
-              <TableHead className="w-[100px]">상태</TableHead>
-              <TableHead className="w-[120px]">리뷰이미지</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="rounded-md border overflow-x-auto">
+        <table className="w-full min-w-[800px]">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              <th className="h-12 px-4 text-center align-middle font-medium w-[80px]">
+                번호
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-[120px]">
+                이름
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-[150px]">
+                연락처
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-[200px]">
+                이메일
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-[200px]">
+                참여계정
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-[200px]">
+                참여 이벤트
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-[120px]">
+                리뷰이미지
+              </th>
+            </tr>
+          </thead>
+          <tbody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-4">
-                  데이터를 불러오는 중...
-                </TableCell>
-              </TableRow>
+              <tr>
+                <td colSpan={8} className="p-4 text-center">
+                  <div className="flex justify-center items-center h-40">
+                    <Spinner size="lg" className="text-primary" />
+                  </div>
+                </td>
+              </tr>
             ) : !participants || participants.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-4">
+              <tr>
+                <td colSpan={8} className="p-4 text-center">
                   데이터가 없습니다.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               participants.map((participant) => (
-                <TableRow
+                <tr
                   key={participant.id}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="border-b cursor-pointer hover:bg-muted/50"
                   onClick={() => handleRowClick(participant)}
                 >
-                  <TableCell>{participant.id.substring(0, 8)}</TableCell>
-                  <TableCell>{participant.name}</TableCell>
-                  <TableCell>{participant.phone}</TableCell>
-                  <TableCell>{participant.login_account}</TableCell>
-                  <TableCell>{participant.event_account}</TableCell>
-                  <TableCell 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    <Link 
+                  <td className="p-4 text-center">{participant.id.substring(0, 8)}</td>
+                  <td className="p-4 text-center">{participant.name}</td>
+                  <td className="p-4 text-center">{participant.phone}</td>
+                  <td className="p-4 text-center">{participant.login_account}</td>
+                  <td className="p-4 text-center">{participant.event_account}</td>
+                  <td className="p-4 text-center">
+                    <Link
                       href={`/admin/reviews/${encodeURIComponent(participant.reviews.id)}`}
                       className="text-blue-600 hover:underline"
                     >
                       {participant.reviews.title}
                     </Link>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-md text-xs ${
-                        getStatusStyle("completed").className
-                      }`}
-                    >
-                      {getStatusStyle("completed").text}
-                    </span>
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td className="p-4 text-center">
                     {participant.review_image ? (
-                      <div 
+                      <div
                         className="relative w-10 h-10 rounded-md overflow-hidden cursor-pointer"
                         onClick={(e) => {
-                          e.stopPropagation(); // 행 클릭 방지
+                          e.stopPropagation();
                           handleImageClick(participant.review_image!, e);
                         }}
                       >
@@ -383,12 +386,12 @@ export default function AdminHistoryPage() {
                     ) : (
                       <span className="text-muted-foreground">없음</span>
                     )}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       <div className="flex items-center justify-between">

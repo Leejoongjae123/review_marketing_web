@@ -20,7 +20,40 @@ export async function GET(request: NextRequest) {
   const end = start + pageSize - 1
   
   try {
-    // 기본 쿼리 설정
+    // 현재 로그인한 광고주 정보 가져오기
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return NextResponse.json({ error: '인증되지 않은 사용자입니다.' }, { status: 401 })
+    }
+
+    // 광고주 ID 가져오기
+    const providerId = user.id
+    
+    // 기본 쿼리 설정 - 리뷰 정보와 함께 조회
+    const { data: reviewsData, error: reviewsError } = await supabase
+      .from('reviews')
+      .select('id')
+      .or(`provider1.eq.${providerId},provider2.eq.${providerId},provider3.eq.${providerId}`)
+    
+    if (reviewsError) {
+      throw reviewsError
+    }
+    
+    if (!reviewsData || reviewsData.length === 0) {
+      return NextResponse.json({
+        data: [],
+        count: 0,
+        page,
+        pageSize,
+        totalPages: 0
+      })
+    }
+    
+    // 리뷰 ID 배열 생성
+    const reviewIds = reviewsData.map(review => review.id)
+    
+    // 이 리뷰 ID에 참여한 사용자 데이터 조회
     let query = supabase
       .from('review_participants')
       .select(`
@@ -34,9 +67,13 @@ export async function GET(request: NextRequest) {
           price,
           shipping_fee,
           seller,
-          period
+          period,
+          provider1,
+          provider2,
+          provider3
         )
       `, { count: 'exact' })
+      .in('review_id', reviewIds)
     
     // 검색어가 있는 경우 필터 추가
     if (searchTerm) {
@@ -61,8 +98,8 @@ export async function GET(request: NextRequest) {
     }
     
     return NextResponse.json({ 
-      histories: data, 
-      totalCount: count || 0, 
+      data, 
+      count: count || 0, 
       page,
       pageSize,
       totalPages: Math.ceil((count || 0) / pageSize)

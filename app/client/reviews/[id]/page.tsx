@@ -201,9 +201,7 @@ export default function ClientEditReviewPage() {
   const getUser = async () => {
     try {
       const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        throw error;
-      }
+
 
       setUser(data.user);
 
@@ -380,6 +378,16 @@ export default function ClientEditReviewPage() {
 
   const handleAddParticipant = async () => {
     try {
+      // status가 rejected인 경우 참여자 등록 방지
+      if (formData.status !== "approved") {
+        toast({
+          title: "등록 불가",
+          description: "현재 이벤트에는 리뷰를 등록할 수 없습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // 필수 필드 검증
       if (
         !newParticipant.name ||
@@ -391,6 +399,25 @@ export default function ClientEditReviewPage() {
         // Alert Dialog로 변경
         setError("모든 필수 필드를 입력해주세요.");
         return;
+      }
+
+      // 이벤트 기간 검증
+      if (formData.startDate && formData.endDate) {
+        const currentDate = new Date();
+        const startDate = new Date(formData.startDate);
+        const endDate = new Date(formData.endDate);
+        
+        // 종료일 밤 11시 59분 59초까지로 설정
+        endDate.setHours(23, 59, 59, 999);
+        
+        if (currentDate < startDate || currentDate > endDate) {
+          toast({
+            title: "이벤트 기간 오류",
+            description: "현재 이벤트 기간이 아닙니다. 이벤트 기간에만 리뷰 작성이 가능합니다.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       setIsSubmitting(true);
@@ -719,6 +746,19 @@ export default function ClientEditReviewPage() {
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
+                  const currentDate = new Date();
+                  const startDate = new Date(formData.startDate);
+                  const endDate = new Date(formData.endDate);
+                  endDate.setHours(23, 59, 59, 999);
+
+                  if (formData.status === "rejected" || currentDate < startDate || currentDate > endDate) {
+                    toast({
+                      title: "등록 불가",
+                      description: "현재 이벤트에는 리뷰를 등록할 수 없습니다.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   setIsAddModalOpen(true);
                 }}
               >
@@ -1033,7 +1073,7 @@ export default function ClientEditReviewPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Spinner size="sm" className="text-white" /> 등록 중...
+                    <Spinner size="sm" className="text-white" />{" "} 등록 중...
                   </>
                 ) : (
                   "등록"

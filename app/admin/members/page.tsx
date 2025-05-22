@@ -36,6 +36,7 @@ interface Profile {
   role?: "admin" | "provider" | "client" | "master";
   status?: "active" | "inactive";
   email?: string;
+  companyName?: string;
 }
 
 // 페이지네이션 데이터 타입
@@ -60,7 +61,9 @@ export default function AdminMembersPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [selectedRole, setSelectedRole] = useState<Profile["role"] | "all">("all");
+  const [selectedRole, setSelectedRole] = useState<Profile["role"] | "all">(
+    "all"
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -68,9 +71,9 @@ export default function AdminMembersPage() {
     admin: 0,
     provider: 0,
     client: 0,
-    total: 0
+    total: 0,
   });
-  
+
   // 광고주 가입 모달 상태
   const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -83,9 +86,15 @@ export default function AdminMembersPage() {
     password: "",
     confirmPassword: "",
   });
-  
+
   const { toast } = useToast();
   const supabase = createClient();
+
+  // 비밀번호 변경 모달 상태
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState<string | null>(null);
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   // 데이터 로드 함수
   const fetchProfiles = async (
@@ -102,42 +111,46 @@ export default function AdminMembersPage() {
         page: page.toString(),
         limit: limit.toString(),
       });
-      
+
       if (term) {
-        params.append('searchTerm', term);
-        params.append('searchCategory', category);
+        params.append("searchTerm", term);
+        params.append("searchCategory", category);
       }
-      
-      if (role !== 'all') {
-        params.append('role', role as string);
+
+      if (role !== "all") {
+        params.append("role", role as string);
       }
-      
+
       const response = await fetch(`/api/admin/members?${params.toString()}`);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || '회원 정보를 불러오는데 실패했습니다.');
+        throw new Error(
+          errorData.error || "회원 정보를 불러오는데 실패했습니다."
+        );
       }
-      
+
       const data = await response.json();
       setProfiles(data.members);
-      
+
       // 페이지네이션 정보 설정
       if (data.pagination) {
         setTotalCount(data.pagination.total);
         setTotalPages(data.pagination.totalPages);
       }
-      
+
       // 역할별 카운트 설정
       if (data.counts) {
         setRoleCounts(data.counts);
       }
-      
     } catch (error) {
-      console.error('회원 데이터 로딩 오류:', error);
+      console.error("회원 데이터 로딩 오류:", error);
       toast({
         title: "오류",
-        description: error instanceof Error ? error.message : "회원 데이터를 불러오는데 실패했습니다.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "회원 데이터를 불러오는데 실패했습니다.",
         variant: "destructive",
       });
     } finally {
@@ -166,8 +179,13 @@ export default function AdminMembersPage() {
   // 광고주 가입 처리 함수
   const handleProviderRegister = async () => {
     // 유효성 검사
-    if (!providerForm.email || !providerForm.password || !providerForm.companyName || 
-        !providerForm.staffName || !providerForm.phone) {
+    if (
+      !providerForm.email ||
+      !providerForm.password ||
+      !providerForm.companyName ||
+      !providerForm.staffName ||
+      !providerForm.phone
+    ) {
       toast({
         title: "오류",
         description: "모든 필드를 입력해주세요.",
@@ -218,7 +236,7 @@ export default function AdminMembersPage() {
           title: "성공",
           description: "광고주 계정이 생성되었습니다.",
         });
-        
+
         // 모달 닫기 및 폼 초기화
         setIsProviderModalOpen(false);
         setProviderForm({
@@ -230,7 +248,7 @@ export default function AdminMembersPage() {
           password: "",
           confirmPassword: "",
         });
-        
+
         // 회원 목록 새로고침
         fetchProfiles();
       } else {
@@ -259,20 +277,20 @@ export default function AdminMembersPage() {
   const handleRoleChange = async (userId: string, newRole: Profile["role"]) => {
     try {
       const response = await fetch(`/api/admin/members/${userId}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ role: newRole }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || '역할 변경에 실패했습니다.');
+        throw new Error(errorData.error || "역할 변경에 실패했습니다.");
       }
 
       const data = await response.json();
-      
+
       // 상태 업데이트
       setProfiles((prevProfiles) =>
         prevProfiles.map((profile) =>
@@ -284,36 +302,40 @@ export default function AdminMembersPage() {
         title: "성공",
         description: "회원 역할이 변경되었습니다.",
       });
-      
+
       // 역할 변경 후 카운트 업데이트
       fetchProfiles(currentPage, itemsPerPage, selectedRole);
     } catch (error) {
-      console.error('역할 변경 오류:', error);
+      console.error("역할 변경 오류:", error);
       toast({
         title: "오류",
-        description: error instanceof Error ? error.message : "역할 변경에 실패했습니다.",
+        description:
+          error instanceof Error ? error.message : "역할 변경에 실패했습니다.",
         variant: "destructive",
       });
     }
   };
 
-  const handleStatusChange = async (userId: string, newStatus: "active" | "inactive") => {
+  const handleStatusChange = async (
+    userId: string,
+    newStatus: "active" | "inactive"
+  ) => {
     try {
       const response = await fetch(`/api/admin/members/${userId}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ status: newStatus }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || '상태 변경에 실패했습니다.');
+        throw new Error(errorData.error || "상태 변경에 실패했습니다.");
       }
 
       const data = await response.json();
-      
+
       // 상태 업데이트
       setProfiles((prevProfiles) =>
         prevProfiles.map((profile) =>
@@ -325,14 +347,15 @@ export default function AdminMembersPage() {
         title: "성공",
         description: "회원 상태가 변경되었습니다.",
       });
-      
+
       // 상태 변경 후 카운트 업데이트
       fetchProfiles(currentPage, itemsPerPage, selectedRole);
     } catch (error) {
-      console.error('상태 변경 오류:', error);
+      console.error("상태 변경 오류:", error);
       toast({
         title: "오류",
-        description: error instanceof Error ? error.message : "상태 변경에 실패했습니다.",
+        description:
+          error instanceof Error ? error.message : "상태 변경에 실패했습니다.",
         variant: "destructive",
       });
     }
@@ -343,16 +366,16 @@ export default function AdminMembersPage() {
     setCurrentPage(1);
     fetchProfiles(1, itemsPerPage, selectedRole, searchTerm, searchCategory);
   };
-  
+
   const handleRoleFilter = (role: Profile["role"] | "all") => {
     setSelectedRole(role);
     setCurrentPage(1);
   };
-  
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
-  
+
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value));
     setCurrentPage(1);
@@ -370,6 +393,54 @@ export default function AdminMembersPage() {
         return "관리자";
       default:
         return "리뷰어";
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmNewPassword || !newPassword || !confirmNewPassword) {
+      toast({
+        title: "오류",
+        description: "비밀번호가 일치하지 않거나 비어 있습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/changepassword`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ newPassword, userId: isPasswordModalOpen }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast({
+          title: "오류",
+          description: data.error || "비밀번호 변경에 실패했습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "성공",
+        description: "비밀번호가 성공적으로 변경되었습니다.",
+      });
+
+      // 모달 닫기 및 입력 필드 초기화
+      setIsPasswordModalOpen(null);
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch (error) {
+      toast({
+        title: "오류",
+        description: "서버 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -435,48 +506,60 @@ export default function AdminMembersPage() {
               리뷰어 ({roleCounts.client})
             </Button>
           </div>
-          <Select
-            value={itemsPerPage.toString()}
-            onValueChange={handleItemsPerPageChange}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="표시 개수" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10개씩 보기</SelectItem>
-              <SelectItem value="50">50개씩 보기</SelectItem>
-              <SelectItem value="100">100개씩 보기</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-4">
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={handleItemsPerPageChange}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="표시 개수" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10개씩 보기</SelectItem>
+                <SelectItem value="50">50개씩 보기</SelectItem>
+                <SelectItem value="100">100개씩 보기</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={() => setIsProviderModalOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              광고주 가입
+            </Button>
+          </div>
         </div>
         <div className="rounded-md border overflow-x-auto">
           <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+                <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                   번호
                 </th>
-                <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+                <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
+                  이메일
+                </th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                   회원ID
                 </th>
-                <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+                <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                   이름
                 </th>
-                <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+                <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                   전화번호
                 </th>
-                <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+                <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                   계정권한
                 </th>
-                <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+                <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                   계정상태
+                </th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
+                  비밀번호 변경
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td colSpan={6} className="p-4 text-center">
-                  <div className="flex justify-center items-center h-40">
+                  <div className="flex justify-center items-center h-40 w-full">
                     <Spinner size="lg" className="text-primary" />
                   </div>
                 </td>
@@ -497,10 +580,6 @@ export default function AdminMembersPage() {
             플랫폼에 등록된 모든 회원을 관리합니다.
           </p>
         </div>
-        <Button onClick={() => setIsProviderModalOpen(true)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          광고주 가입
-        </Button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -557,41 +636,53 @@ export default function AdminMembersPage() {
             리뷰어 ({roleCounts.client})
           </Button>
         </div>
-        <Select
-          value={itemsPerPage.toString()}
-          onValueChange={handleItemsPerPageChange}
-        >
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="표시 개수" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="10">10개씩 보기</SelectItem>
-            <SelectItem value="50">50개씩 보기</SelectItem>
-            <SelectItem value="100">100개씩 보기</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-4">
+          <Select
+            value={itemsPerPage.toString()}
+            onValueChange={handleItemsPerPageChange}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="표시 개수" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10개씩 보기</SelectItem>
+              <SelectItem value="50">50개씩 보기</SelectItem>
+              <SelectItem value="100">100개씩 보기</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setIsProviderModalOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            광고주 가입
+          </Button>
+        </div>
       </div>
       <div className="rounded-md border overflow-x-auto">
         <table className="w-full min-w-[800px]">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+              <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                 번호
               </th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+              <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
+                이메일
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                 회원ID
               </th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+              <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                 이름
               </th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+              <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                 전화번호
               </th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+              <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                 계정권한
               </th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-1/5">
+              <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
                 계정상태
+              </th>
+              <th className="h-12 px-4 text-center align-middle font-medium w-1/8">
+                비밀번호 변경
               </th>
             </tr>
           </thead>
@@ -599,9 +690,14 @@ export default function AdminMembersPage() {
             {profiles.length > 0 ? (
               profiles.map((profile, index) => (
                 <tr key={profile.id} className="border-b">
-                  <td className="p-4 text-center">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                  <td className="p-4 text-center">
+                    {(currentPage - 1) * itemsPerPage + index + 1}
+                  </td>
+                  <td className="p-4 text-center">{profile.email || "-"}</td>
                   <td className="p-4 text-center">{profile.id}</td>
-                  <td className="p-4 text-center">{profile.full_name || profile.username || '-'}</td>
+                  <td className="p-4 text-center">
+                    {profile.full_name || profile.username || "-"}
+                  </td>
                   <td className="p-4 text-center">{profile.phone || "-"}</td>
                   <td className="p-4 text-center">
                     <Select
@@ -624,12 +720,17 @@ export default function AdminMembersPage() {
                     <Select
                       value={profile.status || "active"}
                       onValueChange={(value) =>
-                        handleStatusChange(profile.id, value as "active" | "inactive")
+                        handleStatusChange(
+                          profile.id,
+                          value as "active" | "inactive"
+                        )
                       }
                     >
                       <SelectTrigger className="w-[120px] mx-auto">
                         <SelectValue>
-                          {profile.status === "inactive" ? "비활성화" : "활성화"}
+                          {profile.status === "inactive"
+                            ? "비활성화"
+                            : "활성화"}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -637,6 +738,11 @@ export default function AdminMembersPage() {
                         <SelectItem value="inactive">비활성화</SelectItem>
                       </SelectContent>
                     </Select>
+                  </td>
+                  <td className="p-4 text-center">
+                    <Button onClick={() => setIsPasswordModalOpen(profile.id)}>
+                      비밀번호 변경
+                    </Button>
                   </td>
                 </tr>
               ))
@@ -684,7 +790,7 @@ export default function AdminMembersPage() {
               } else {
                 pageNum = currentPage - 2 + i;
               }
-              
+
               return (
                 <Button
                   key={pageNum}
@@ -731,7 +837,7 @@ export default function AdminMembersPage() {
                   onChange={handleProviderFormChange}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="staffName">담당자 이름</Label>
                 <Input
@@ -742,7 +848,7 @@ export default function AdminMembersPage() {
                   onChange={handleProviderFormChange}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="phone">연락처</Label>
                 <Input
@@ -753,7 +859,7 @@ export default function AdminMembersPage() {
                   onChange={handleProviderFormChange}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email">이메일</Label>
                 <Input
@@ -765,7 +871,7 @@ export default function AdminMembersPage() {
                   onChange={handleProviderFormChange}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">비밀번호</Label>
                 <Input
@@ -777,7 +883,7 @@ export default function AdminMembersPage() {
                   onChange={handleProviderFormChange}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">비밀번호 확인</Label>
                 <Input
@@ -788,21 +894,23 @@ export default function AdminMembersPage() {
                   value={providerForm.confirmPassword}
                   onChange={handleProviderFormChange}
                 />
-                {providerForm.confirmPassword && 
-                 providerForm.password !== providerForm.confirmPassword && (
-                  <p className="text-sm text-red-500">비밀번호가 일치하지 않습니다.</p>
-                )}
+                {providerForm.confirmPassword &&
+                  providerForm.password !== providerForm.confirmPassword && (
+                    <p className="text-sm text-red-500">
+                      비밀번호가 일치하지 않습니다.
+                    </p>
+                  )}
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsProviderModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsProviderModalOpen(false)}
+            >
               취소
             </Button>
-            <Button 
-              onClick={handleProviderRegister} 
-              disabled={registerLoading}
-            >
+            <Button onClick={handleProviderRegister} disabled={registerLoading}>
               {registerLoading ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4 text-white" />
@@ -811,6 +919,58 @@ export default function AdminMembersPage() {
               ) : (
                 "계정 생성"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 비밀번호 변경 모달 */}
+      <Dialog open={isPasswordModalOpen !== null} onOpenChange={() => setIsPasswordModalOpen(null)}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>비밀번호 변경</DialogTitle>
+            <DialogDescription>
+              새로운 비밀번호를 입력해주세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">새 비밀번호</Label>
+              <Input
+                id="newPassword"
+                name="newPassword"
+                type="password"
+                placeholder="새 비밀번호 입력"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmNewPassword">새 비밀번호 확인</Label>
+              <Input
+                id="confirmNewPassword"
+                name="confirmNewPassword"
+                type="password"
+                placeholder="새 비밀번호 재입력"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+              />
+            </div>
+            {confirmNewPassword && newPassword !== confirmNewPassword && (
+              <p className="text-sm text-red-500">
+                비밀번호가 일치하지 않습니다.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPasswordModalOpen(null)}>
+              취소
+            </Button>
+            <Button
+              onClick={handleChangePassword}
+              disabled={newPassword !== confirmNewPassword || !newPassword || !confirmNewPassword}
+            >
+              변경
             </Button>
           </DialogFooter>
         </DialogContent>

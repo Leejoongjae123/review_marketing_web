@@ -83,6 +83,24 @@ export default function AddReviewPage() {
     console.log("선택된 광고주 목록:", selectedProviders);
   }, [selectedProviders]);
 
+  // 페이지 로드 시 스토리지 버킷 초기화 요청
+  useEffect(() => {
+    const initStorage = async () => {
+      try {
+        // 앱 초기화 API 호출 (reviews 버킷 생성 포함)
+        const response = await fetch('/api/init');
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.log('스토리지 초기화 실패:', errorData);
+        }
+      } catch (error) {
+        console.log('스토리지 초기화 요청 중 오류 발생');
+      }
+    };
+
+    initStorage();
+  }, []);
+
   const handleViewReview = (participant: Participant) => {
     setSelectedParticipant(participant);
     setIsModalOpen(true);

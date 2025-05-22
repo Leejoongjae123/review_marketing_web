@@ -103,7 +103,7 @@ export default function AdminHistoryPage() {
         params.append('searchCategory', searchCategory);
       }
 
-      const response = await fetch(`/api/participants?${params.toString()}`);
+      const response = await fetch(`/api/provider/history?${params.toString()}`);
       const data: ApiResponse = await response.json();
       
       console.log('API Response:', data);

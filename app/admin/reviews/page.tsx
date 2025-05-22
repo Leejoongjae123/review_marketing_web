@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { createClient } from "@/utils/supabase/client";
+import { Spinner } from "@/components/ui/spinner";
 
 // Review 타입 정의
 interface Review {
@@ -280,19 +281,13 @@ export default function AdminReviewsPage() {
 
       {loading ? (
         <div className="flex justify-center items-center h-40">
-          <p>데이터를 불러오는 중...</p>
+          <Spinner size="lg" className="text-primary" />
         </div>
       ) : (
         <div className="rounded-md border overflow-x-auto">
           <table className="w-full min-w-[1200px]">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="h-12 px-4 text-center align-middle font-medium w-12">
-                  <Checkbox
-                    checked={selectedReviews.size === reviews.length && reviews.length > 0}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
@@ -310,12 +305,6 @@ export default function AdminReviewsPage() {
               {reviews.map((review, index) => (
                 <tr key={review.id} className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
                     onClick={() => handleEditProduct(review.id)}>
-                  <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedReviews.has(review.id)}
-                      onCheckedChange={(checked) => handleSelectReview(review.id, checked as boolean)}
-                    />
-                  </td>
                   <td className="p-4 text-center">{startIndex + index + 1}</td>
                   <td className="p-4 text-center">{review.platform}</td>
                   <td className="p-4 text-center">
