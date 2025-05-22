@@ -90,38 +90,60 @@ export default function AddReviewPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 시작일과 종료일 필수 입력 검증
+    if (!formData.startDate || formData.startDate.trim() === '' || !formData.endDate || formData.endDate.trim() === '') {
+      toast({
+        title: "필수 정보 누락",
+        description: "시작일과 종료일은 필수 입력사항입니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      // FormData 객체 생성
-      const submitFormData = new FormData();
-      
-      // 기본 폼 데이터 추가
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          submitFormData.append(key, value.toString());
-        }
+      // 이미지 파일을 base64로 변환
+      const imageFilesPromises = images.map(async (image) => {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve(reader.result as string);
+          };
+          reader.readAsDataURL(image.file);
+        });
       });
       
-      // 이미지 파일 추가
-      images.forEach(image => {
-        submitFormData.append('images', image.file);
-      });
+      const imageFiles = await Promise.all(imageFilesPromises);
       
-      // 참여자 데이터를 JSON 문자열로 변환하여 추가
-      if (participants.length > 0) {
-        submitFormData.append('participants_data', JSON.stringify(participants));
-      }
-      
-      // 선택된 광고주 정보 추가
-      if (selectedProviders.length > 0) {
-        submitFormData.append('providers_data', JSON.stringify(selectedProviders));
-      }
+      // JSON 데이터 준비
+      const requestData = {
+        platform: formData.platform,
+        productName: formData.productName,
+        optionName: formData.optionName,
+        price: formData.price,
+        shippingFee: formData.shippingFee,
+        seller: formData.seller,
+        status: formData.status,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        title: formData.title,
+        content: formData.content,
+        rating: formData.rating,
+        productUrl: formData.productUrl,
+        imageFiles: imageFiles,
+        participants_data: participants.length > 0 ? participants : undefined,
+        providers_data: selectedProviders.length > 0 ? selectedProviders : undefined,
+      };
       
       // API 호출
       const response = await fetch('/api/reviews', {
         method: 'POST',
-        body: submitFormData,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData),
       });
       
       const result = await response.json();
@@ -247,6 +269,7 @@ export default function AddReviewPage() {
   const handleRemoveParticipant = (id: number) => {
     setParticipants(participants.filter(p => p.id !== id));
   };
+  
 
   return (
     <div className="space-y-6">
@@ -300,7 +323,7 @@ export default function AddReviewPage() {
               value={formData.platform}
               onValueChange={(value) => setFormData(prev => ({ ...prev, platform: value }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className={!formData.platform ? "border-red-300 focus:border-red-500" : ""}>
                 <SelectValue placeholder="플랫폼 선택" />
               </SelectTrigger>
               <SelectContent>
@@ -311,6 +334,9 @@ export default function AddReviewPage() {
                 <SelectItem value="쿠팡">쿠팡</SelectItem>
               </SelectContent>
             </Select>
+            {!formData.platform && (
+              <p className="text-red-500 text-sm mt-1">플랫폼은 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
@@ -337,17 +363,27 @@ export default function AddReviewPage() {
               value={formData.productName}
               onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
               placeholder="제품명을 입력하세요"
+              className={!formData.productName ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.productName && (
+              <p className="text-red-500 text-sm mt-1">제품명은 필수 입력사항입니다.</p>
+            )}
           </div>
 
-          <div className="space-y-2 col-span-2 md:col-span-1">
+          <div className="space-y-2 md:col-span-1">
             <Label htmlFor="optionName">옵션명</Label>
             <Input
               id="optionName"
               value={formData.optionName}
               onChange={(e) => setFormData(prev => ({ ...prev, optionName: e.target.value }))}
               placeholder="옵션명을 입력하세요"
+              className={!formData.optionName ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.optionName && (
+              <p className="text-red-500 text-sm mt-1">옵션명은 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2">
@@ -355,7 +391,11 @@ export default function AddReviewPage() {
             <MultiProviderSelector 
               value={selectedProviders}
               onChange={setSelectedProviders}
+              
             />
+            {selectedProviders.length === 0 && (
+              <div className="border-red-300 focus:border-red-500"></div>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
@@ -366,7 +406,12 @@ export default function AddReviewPage() {
               value={formData.price}
               onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
               placeholder="가격을 입력하세요"
+              className={!formData.price ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.price && (
+              <p className="text-red-500 text-sm mt-1">가격은 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
@@ -377,7 +422,12 @@ export default function AddReviewPage() {
               value={formData.shippingFee}
               onChange={(e) => setFormData(prev => ({ ...prev, shippingFee: e.target.value }))}
               placeholder="배송비를 입력하세요"
+              className={!formData.shippingFee ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.shippingFee && (
+              <p className="text-red-500 text-sm mt-1">배송비는 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
@@ -387,27 +437,44 @@ export default function AddReviewPage() {
               value={formData.seller}
               onChange={(e) => setFormData(prev => ({ ...prev, seller: e.target.value }))}
               placeholder="판매자를 입력하세요"
+              className={!formData.seller ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.seller && (
+              <p className="text-red-500 text-sm mt-1">판매자는 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="startDate">시작일</Label>
+            <Label htmlFor="startDate">시작일 <span className="text-red-500">*</span></Label>
             <Input
               id="startDate"
               type="datetime-local"
               value={formData.startDate}
               onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+              required
+              className={!formData.startDate ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.startDate && (
+              <p className="text-red-500 text-sm mt-1">시작일은 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="endDate">종료일</Label>
+            <Label htmlFor="endDate">종료일 <span className="text-red-500">*</span></Label>
             <Input
               id="endDate"
               type="datetime-local"
               value={formData.endDate}
               onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+              required
+              className={!formData.endDate ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.endDate && (
+              <p className="text-red-500 text-sm mt-1">종료일은 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
@@ -417,7 +484,12 @@ export default function AddReviewPage() {
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="제목을 입력하세요"
+              className={!formData.title ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.title && (
+              <p className="text-red-500 text-sm mt-1">제목은 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
@@ -427,7 +499,12 @@ export default function AddReviewPage() {
               value={formData.content}
               onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
               placeholder="내용을 입력하세요"
+              className={!formData.content ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.content && (
+              <p className="text-red-500 text-sm mt-1">내용은 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
@@ -440,7 +517,12 @@ export default function AddReviewPage() {
               value={formData.rating}
               onChange={(e) => setFormData(prev => ({ ...prev, rating: e.target.value }))}
               placeholder="평점을 입력하세요 (1-5)"
+              className={!formData.rating ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
             />
+            {!formData.rating && (
+              <p className="text-red-500 text-sm mt-1">평점은 필수 입력사항입니다.</p>
+            )}
           </div>
 
           <div className="space-y-2 col-span-2 md:col-span-1">
@@ -451,7 +533,8 @@ export default function AddReviewPage() {
                 value={formData.productUrl}
                 onChange={(e) => setFormData(prev => ({ ...prev, productUrl: e.target.value }))}
                 placeholder="상품 URL을 입력하세요"
-                className="flex-1"
+                className={!formData.productUrl ? "border-red-300 focus:border-red-500" : ""}
+                aria-required="true"
               />
               {formData.productUrl && (
                 <Button
@@ -471,6 +554,9 @@ export default function AddReviewPage() {
                 </Button>
               )}
             </div>
+            {!formData.productUrl && (
+              <p className="text-red-500 text-sm mt-1">상품 URL은 필수 입력사항입니다.</p>
+            )}
           </div>
         </div>
 
@@ -483,7 +569,10 @@ export default function AddReviewPage() {
           >
             취소
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting || !formData.startDate || !formData.endDate}
+          >
             {isSubmitting ? "등록 중..." : "등록"}
           </Button>
         </div>

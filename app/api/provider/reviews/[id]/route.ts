@@ -3,10 +3,11 @@ import { createClient } from '@/utils/supabase/server';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient();
-  const reviewId = params.id;
+  const { id } = await params;
+  const reviewId = id;
 
   if (!reviewId) {
     return NextResponse.json({ message: '리뷰 ID가 필요합니다.' }, { status: 400 });

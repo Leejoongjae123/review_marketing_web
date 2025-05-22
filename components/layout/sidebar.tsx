@@ -40,6 +40,7 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
   const [loading, setLoading] = useState<boolean>(true);
   // 인증 상태 확인을 위한 상태 추가
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   
   // 인증 상태 확인
   const checkAuth = async () => {
@@ -59,10 +60,9 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
       }
       
       const data = await response.json();
-      console.log("data:",data);
       setIsAuthenticated(data.authenticated);
       setUserRole(data.userRole);
-      
+      setUserId(data.userId);
       
     } catch (error) {
       console.error('인증 상태 확인 실패:', error);
@@ -192,6 +192,11 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
           {userRole && (
             <div className="text-sm text-center text-muted-foreground">
               현재 접속: {getRoleDisplayName(userRole)}
+            </div>
+          )}
+          {userId && (
+            <div className="text-sm text-center text-muted-foreground">
+              현재 접속: {userId}
             </div>
           )}
         </div>

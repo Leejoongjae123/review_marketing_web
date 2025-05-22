@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   
+  const cookieStore = cookies()
   const supabase = await createClient()
   const url = new URL(request.url)
   
@@ -20,6 +21,13 @@ export async function GET(request: NextRequest) {
   const end = start + pageSize - 1
   
   try {
+    // 현재 로그인한 사용자 정보 가져오기
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return NextResponse.json({ error: '인증되지 않은 사용자입니다.' }, { status: 401 })
+    }
+    
     // 기본 쿼리 설정
     let query = supabase
       .from('review_participants')
@@ -34,25 +42,26 @@ export async function GET(request: NextRequest) {
           price,
           shipping_fee,
           seller,
-          period
+          period,
+          image_url,
+          product_url
         )
       `, { count: 'exact' })
+      .eq('reviewer_id', user.id) // 현재 사용자 ID와 일치하는 항목만 가져오기
     
     // 검색어가 있는 경우 필터 추가
     if (searchTerm) {
-      if (searchCategory === 'name') {
-        query = query.ilike('name', `%${searchTerm}%`)
-      } else if (searchCategory === 'phone') {
-        query = query.ilike('phone', `%${searchTerm}%`)
-      } else if (searchCategory === 'email') {
-        query = query.ilike('login_account', `%${searchTerm}%`)
-      } else if (searchCategory === 'eventAccount') {
+      if (searchCategory === 'product_name') {
+        query = query.ilike('reviews.product_name', `%${searchTerm}%`)
+      } else if (searchCategory === 'platform') {
+        query = query.ilike('reviews.platform', `%${searchTerm}%`)
+      } else if (searchCategory === 'event_account') {
         query = query.ilike('event_account', `%${searchTerm}%`)
       }
     }
     
     // 범위 지정하여 데이터 가져오기
-    const { data, count, error } = await query
+    const { data: participants, count, error } = await query
       .order('created_at', { ascending: false })
       .range(start, end)
     
@@ -61,9 +70,9 @@ export async function GET(request: NextRequest) {
     }
     
     return NextResponse.json({ 
-      data, 
-      count: count || 0, 
-      page,
+      participants, 
+      totalCount: count || 0, 
+      currentPage: page,
       pageSize,
       totalPages: Math.ceil((count || 0) / pageSize)
     })

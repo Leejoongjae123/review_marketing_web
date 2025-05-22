@@ -35,14 +35,15 @@ async function registerAction(formData: FormData) {
 }
 
 // 서버 컴포넌트
-export default function ProviderAuthPage({ searchParams }: { searchParams?: { tab?: string } }) {
-  console.log('searchParams', searchParams)
+export default async function ProviderAuthPage({ searchParams }: { searchParams?: Promise<{ tab?: string }> }) {
+  const params = await searchParams || {};
+  const tab = params.tab || 'login';
   return (
     <div className="space-y-4 w-full h-full">
       <h1 className="text-2xl font-bold tracking-tight">로그인 / 회원가입</h1>
       <p className="text-muted-foreground">광고주 계정에 접근하세요.</p>
       <div className="flex w-full h-full justify-center items-center">
-        <Tabs defaultValue={searchParams?.tab || "login"} className="w-full max-w-md h-full">
+        <Tabs defaultValue={tab} className="w-full max-w-md h-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">로그인</TabsTrigger>
             {/* <TabsTrigger value="register">회원가입</TabsTrigger> */}

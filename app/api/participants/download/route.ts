@@ -12,53 +12,43 @@ export async function GET(request: Request) {
     const searchTerm = searchParams.get('searchTerm') || '';
     const searchCategory = searchParams.get('searchCategory') || '';
     
+    // 현재 로그인한 사용자 정보 가져오기
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: '인증되지 않은 사용자입니다.' }, { status: 401 });
+    }
+    
     // 기본 쿼리 설정 - 페이지네이션 없이 모든 데이터 조회
     let query = supabase
       .from('review_participants')
-      .select('*, review_id(*)')
-      .order('created_at', { ascending: false })
-      .not('review_id', 'is', null);
+      .select(`
+        *,
+        reviews:review_id (
+          id,
+          title,
+          platform,
+          product_name,
+          option_name,
+          price,
+          shipping_fee,
+          seller,
+          period,
+          image_url,
+          product_url
+        )
+      `)
+      .eq('reviewer_id', user.id) // 현재 사용자 ID와 일치하는 항목만 가져오기
+      .order('created_at', { ascending: false });
     
     // 검색어가 있는 경우 필터링 추가
     if (searchTerm && searchCategory) {
       if (searchCategory === 'event_account') {
         query = query.ilike('event_account', `%${searchTerm}%`);
       } else if (searchCategory === 'product_name') {
-        // 외래 키 관계의 product_name 필드 검색
-        const reviewsWithProduct = await supabase
-          .from('reviews')
-          .select('id')
-          .ilike('product_name', `%${searchTerm}%`);
-          
-        if (reviewsWithProduct.error) {
-          throw reviewsWithProduct.error;
-        }
-        
-        const reviewIds = reviewsWithProduct.data.map(review => review.id);
-        if (reviewIds.length > 0) {
-          query = query.in('review_id', reviewIds);
-        } else {
-          // 검색 결과가 없는 경우 빈 결과 반환
-          return NextResponse.json({ participants: [] });
-        }
+        query = query.ilike('reviews.product_name', `%${searchTerm}%`);
       } else if (searchCategory === 'platform') {
-        // 외래 키 관계의 platform 필드 검색
-        const reviewsWithPlatform = await supabase
-          .from('reviews')
-          .select('id')
-          .ilike('platform', `%${searchTerm}%`);
-          
-        if (reviewsWithPlatform.error) {
-          throw reviewsWithPlatform.error;
-        }
-        
-        const reviewIds = reviewsWithPlatform.data.map(review => review.id);
-        if (reviewIds.length > 0) {
-          query = query.in('review_id', reviewIds);
-        } else {
-          // 검색 결과가 없는 경우 빈 결과 반환
-          return NextResponse.json({ participants: [] });
-        }
+        query = query.ilike('reviews.platform', `%${searchTerm}%`);
       }
     }
     

@@ -144,7 +144,7 @@ export function MultiProviderSelector({
             }
           }}
           placeholder="광고주 검색..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-black ${value.length === 0 ? 'border-red-300 focus:border-red-500' : 'border-gray-300'}`}
         />
         
         {/* 팝오버 결과 */}

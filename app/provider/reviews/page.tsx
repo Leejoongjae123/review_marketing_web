@@ -50,6 +50,7 @@ interface Review {
   product_url?: string;
   created_at: string;
   updated_at?: string;
+  provider_id?: string;
 }
 
 export default function ProviderReviewsPage() {
@@ -68,13 +69,35 @@ export default function ProviderReviewsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reviewToDelete, setReviewToDelete] = useState<string | number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
   const supabase = createClient();
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        toast({
+          title: "오류",
+          description: "사용자 정보를 가져오는데 실패했습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (session?.user) {
+        setUserId(session.user.id);
+      }
+    };
+    
+    fetchUserData();
+  }, []);
 
   const fetchReviews = async () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/provider/reviews?searchCategory=${searchCategory}&searchTerm=${encodeURIComponent(searchTerm)}&startDate=${startDate}&endDate=${endDate}&page=${currentPage}&pageSize=${pageSize}`
+        `/api/provider/reviews?searchCategory=${searchCategory}&searchTerm=${encodeURIComponent(searchTerm)}&startDate=${startDate}&endDate=${endDate}&page=${currentPage}&pageSize=${pageSize}&providerId=${userId || ''}`
       );
       
       if (!response.ok) {
@@ -100,24 +123,31 @@ export default function ProviderReviewsPage() {
       setLoading(false);
     }
   };
+  console.log("reviews:", reviews);
 
   useEffect(() => {
-    fetchReviews();
-  }, [currentPage, pageSize]);
+    if (userId) {
+      fetchReviews();
+    }
+  }, [currentPage, pageSize, userId]);
 
   useEffect(() => {
     const handleFocus = () => {
-      fetchReviews();
+      if (userId) {
+        fetchReviews();
+      }
     };
-
-    fetchReviews();
+    
+    if (userId) {
+      fetchReviews();
+    }
     
     window.addEventListener('focus', handleFocus);
     
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [userId]);
 
   const handleSearch = () => {
     setCurrentPage(1);

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -7,15 +7,8 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // 서버 컴포넌트에서 Supabase 클라이언트 생성
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase URL과 ANON KEY가 설정되지 않았습니다.');
-    }
-    
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Supabase 클라이언트 생성 (서버 클라이언트 사용)
+    const supabase = await createClient();
     const { id } = await context.params;
     const reviewId = id;
     
@@ -42,15 +35,17 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // 서버 컴포넌트에서 Supabase 클라이언트 생성
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // Supabase 클라이언트 생성 (서버 클라이언트 사용)
+    const supabase = await createClient();
     
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase URL과 ANON KEY가 설정되지 않았습니다.');
+    // 현재 로그인한 사용자 정보 가져오기
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
     
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const userId = session.user.id;
     const { id } = await context.params;
     const reviewId = id;
     const body = await request.json();
@@ -89,7 +84,6 @@ export async function POST(
     if (loginAccountError && loginAccountError.code !== 'PGRST116') {
       return NextResponse.json({ error: loginAccountError.message }, { status: 500 });
     }
-    console.log("existingLoginAccount", existingLoginAccount)
     
     if (existingLoginAccount) {
       return NextResponse.json({ error: '같은 리뷰에 이미 참여한 계정입니다.' }, { status: 400 });
@@ -100,6 +94,7 @@ export async function POST(
       .from('review_participants')
       .insert({
         review_id: reviewId,
+        reviewer_id: userId, // 세션에서 가져온 사용자 ID를 사용
         name,
         phone,
         login_account,

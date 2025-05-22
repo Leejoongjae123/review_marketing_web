@@ -1,16 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useSearchParams } from 'next/navigation';
 
-
-export function MessageHandler() {
+function MessageHandlerContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const message = searchParams?.get('message');
   
-
   useEffect(() => {
     if (message === 'inactive_account') {
       toast({
@@ -22,4 +20,12 @@ export function MessageHandler() {
   }, [message, toast]);
 
   return null;
+}
+
+export function MessageHandler() {
+  return (
+    <Suspense fallback={null}>
+      <MessageHandlerContent />
+    </Suspense>
+  );
 } 

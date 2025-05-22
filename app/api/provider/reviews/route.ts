@@ -48,16 +48,11 @@ export async function GET(request: NextRequest) {
       query = query.lte('created_at', endDateObj.toISOString());
     }
     
-    // TODO: 광고주(provider)와 관련된 리뷰만 필터링하는 로직 추가 필요
-    // 예: 현재 로그인한 광고주의 ID를 가져와서 해당 광고주의 리뷰만 필터링
-    // const { data: { user } } = await supabase.auth.getUser();
-    // if (user && user.id) { // user.id가 provider_id라고 가정
-    //   query = query.eq('provider_id', user.id); 
-    // } else {
-    //   // 사용자가 없거나 provider_id가 없는 경우 빈 결과를 반환하거나 에러 처리
-    //   return NextResponse.json({ reviews: [], totalCount: 0, totalPages: 0 }, { status: 401 });
-    // }
-
+    // providerId 기반 필터링 (provider1, provider2, provider3 중 하나라도 일치)
+    const providerId = searchParams.get('providerId');
+    if (providerId) {
+      query = query.or(`provider1.eq.${providerId},provider2.eq.${providerId},provider3.eq.${providerId}`);
+    }
 
     // 페이지네이션
     query = query.range(offset, offset + pageSize - 1);

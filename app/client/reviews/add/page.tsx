@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +14,16 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Plus, X } from "lucide-react";
 import Image from "next/image";
-
+import { useToast } from "@/components/ui/use-toast";
+import { createClient } from "@/utils/supabase/client";
 export default function ClientAddReviewPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const supabase = createClient();
+  
   const [formData, setFormData] = useState({
     platform: "",
     productName: "",
@@ -31,11 +37,109 @@ export default function ClientAddReviewPage() {
   });
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
 
+
+
+  const getUserId = async () => {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error('세션 가져오기 오류:', error);
+    } else if (session?.user) {
+      setUserId(session.user.id);
+    }
+  };
+
+  useEffect(() => {
+    getUserId();
+  }, []);
+
+  // 페이지 로드 시 스토리지 버킷 확인
+  useEffect(() => {
+    const initStorage = async () => {
+      try {
+        await fetch('/api/storage');
+      } catch (error) {
+        console.log('스토리지 초기화 중 오류 발생');
+      }
+    };
+
+    initStorage();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: API 연동
-    console.log('리뷰 추가:', { ...formData, images });
-    router.push('/client/reviews');
+    setLoading(true);
+
+    try {
+      // 폼 유효성 검사
+      if (!formData.platform || !formData.productName || !formData.reviewTitle || !formData.reviewContent) {
+        toast({
+          title: "필수 항목 누락",
+          description: "필수 항목을 모두 입력해주세요.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // 로그인 여부 확인
+      if (!userId) {
+        toast({
+          title: "로그인 필요",
+          description: "리뷰를 등록하려면 로그인이 필요합니다.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // 이미지 파일들을 base64 문자열로 변환
+      const imageFiles = await Promise.all(
+        images.map(async (image) => {
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              resolve(reader.result as string);
+            };
+            reader.readAsDataURL(image.file);
+          });
+        })
+      );
+
+      // API 요청
+      const response = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          imageFiles,
+          userId: userId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '리뷰 등록에 실패했습니다.');
+      }
+
+      toast({
+        title: "리뷰 등록 성공",
+        description: "리뷰가 성공적으로 등록되었습니다.",
+      });
+
+      // 리뷰 목록 페이지로 이동
+      router.push('/client/reviews');
+    } catch (error: any) {
+      toast({
+        title: "오류 발생",
+        description: error.message || "리뷰 등록 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,11 +321,12 @@ export default function ClientAddReviewPage() {
             type="button"
             variant="outline"
             onClick={() => router.back()}
+            disabled={loading}
           >
             취소
           </Button>
-          <Button type="submit">
-            등록
+          <Button type="submit" disabled={loading}>
+            {loading ? "처리 중..." : "등록"}
           </Button>
         </div>
       </form>

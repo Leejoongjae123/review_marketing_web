@@ -1,21 +1,19 @@
-import { createClient } from '@/utils/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
-
+import { createClient } from "@/utils/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const searchCategory = searchParams.get('searchCategory') || '';
-  const searchTerm = searchParams.get('searchTerm') || '';
-  const startDate = searchParams.get('startDate') || '';
-  const endDate = searchParams.get('endDate') || '';
-  const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = parseInt(searchParams.get('pageSize') || '10');
+  const searchCategory = searchParams.get("searchCategory") || "";
+  const searchTerm = searchParams.get("searchTerm") || "";
+  const startDate = searchParams.get("startDate") || "";
+  const endDate = searchParams.get("endDate") || "";
+  const page = parseInt(searchParams.get("page") || "1");
+  const pageSize = parseInt(searchParams.get("pageSize") || "10");
 
   const supabase = await createClient();
-  
+
   try {
-    let query = supabase
-      .from('reviews')
-      .select('*', { count: 'exact' });
+    let query = supabase.from("reviews").select("*", { count: "exact" });
 
     // 검색어 필터링
     if (searchTerm) {
@@ -24,10 +22,10 @@ export async function GET(request: NextRequest) {
 
     // 날짜 필터링
     if (startDate) {
-      query = query.gte('start_date', startDate);
+      query = query.gte("start_date", startDate);
     }
     if (endDate) {
-      query = query.lte('end_date', endDate);
+      query = query.lte("end_date", endDate);
     }
 
     // 페이지네이션
@@ -44,46 +42,46 @@ export async function GET(request: NextRequest) {
     const reviewsWithProviders = await Promise.all(
       reviews.map(async (review) => {
         const reviewWithProviders = { ...review };
-        
+
         // provider1 정보 가져오기
         if (review.provider1) {
           const { data: provider1Data, error: provider1Error } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', review.provider1)
+            .from("profiles")
+            .select("full_name")
+            .eq("id", review.provider1)
             .single();
-            
+
           if (!provider1Error && provider1Data) {
             reviewWithProviders.provider1_name = provider1Data.full_name;
           }
         }
-        
+
         // provider2 정보 가져오기
         if (review.provider2) {
           const { data: provider2Data, error: provider2Error } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', review.provider2)
+            .from("profiles")
+            .select("full_name")
+            .eq("id", review.provider2)
             .single();
-            
+
           if (!provider2Error && provider2Data) {
             reviewWithProviders.provider2_name = provider2Data.full_name;
           }
         }
-        
+
         // provider3 정보 가져오기
         if (review.provider3) {
           const { data: provider3Data, error: provider3Error } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', review.provider3)
+            .from("profiles")
+            .select("full_name")
+            .eq("id", review.provider3)
             .single();
-            
+
           if (!provider3Error && provider3Data) {
             reviewWithProviders.provider3_name = provider3Data.full_name;
           }
         }
-        
+
         return reviewWithProviders;
       })
     );
@@ -96,11 +94,10 @@ export async function GET(request: NextRequest) {
       totalCount,
       totalPages,
     });
-
   } catch (error) {
-    console.error('Error fetching reviews:', error);
+    console.error("Error fetching reviews:", error);
     return NextResponse.json(
-      { error: '리뷰를 불러오는데 실패했습니다.' },
+      { error: "리뷰를 불러오는데 실패했습니다." },
       { status: 500 }
     );
   }
@@ -110,215 +107,175 @@ export async function GET(request: NextRequest) {
 async function uploadImage(file: File, supabase: any): Promise<string | null> {
   try {
     // 파일 형식 확인
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split(".").pop();
     const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
     const filePath = `reviews/${fileName}`;
-    
+
     // 파일을 ArrayBuffer로 변환
     const arrayBuffer = await file.arrayBuffer();
     const fileData = new Uint8Array(arrayBuffer);
-    
+
     // 슈파베이스 스토리지에 업로드
     const { data, error } = await supabase.storage
-      .from('reviews')
+      .from("reviews")
       .upload(filePath, fileData, {
         contentType: file.type,
-        upsert: false
+        upsert: false,
       });
-    
+
     if (error) {
-      console.error('이미지 업로드 오류:', error);
+      console.error("이미지 업로드 오류:", error);
       return null;
     }
-    
+
     // 업로드된 이미지의 공개 URL 가져오기
-    const { data: { publicUrl } } = supabase.storage
-      .from('reviews')
-      .getPublicUrl(filePath);
-    
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("reviews").getPublicUrl(filePath);
+
     return publicUrl;
   } catch (error) {
-    console.error('이미지 업로드 처리 오류:', error);
+    console.error("이미지 업로드 처리 오류:", error);
     return null;
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
     const supabase = await createClient();
-    const formData = await request.formData();
-    
-    // 리뷰 데이터 추출
-    const reviewData: {
-      platform: string;
-      product_name: string;
-      option_name: string;
-      price: number;
-      shipping_fee: number;
-      seller: string;
-      participants: number;
-      status: string;
-      start_date: string | null;
-      end_date: string | null;
-      title: string;
-      content: string;
-      rating: number;
-      product_url: string;
-      provider1: string | null;
-      provider2: string | null;
-      provider3: string | null;
-      [key: string]: string | number | null;
-    } = {
-      platform: formData.get('platform') as string,
-      product_name: formData.get('productName') as string,
-      option_name: formData.get('optionName') as string,
-      price: parseInt(formData.get('price') as string) || 0,
-      shipping_fee: parseInt(formData.get('shippingFee') as string) || 0,
-      seller: formData.get('seller') as string,
-      participants: parseInt(formData.get('participants') as string) || 0,
-      status: formData.get('status') as string,
-      start_date: formData.get('startDate') ? new Date(formData.get('startDate') as string).toISOString() : null,
-      end_date: formData.get('endDate') ? new Date(formData.get('endDate') as string).toISOString() : null,
-      title: formData.get('title') as string,
-      content: formData.get('content') as string,
-      rating: Math.min(Math.max(parseInt(formData.get('rating') as string) || 3, 1), 5),
-      product_url: formData.get('productUrl') as string,
-      provider1: null,
-      provider2: null,
-      provider3: null,
-    };
 
-    // 필수 필드 확인
-    if (!reviewData.platform || !reviewData.product_name || !reviewData.title || !reviewData.content || !reviewData.rating) {
+    // 현재 로그인한 사용자 정보 가져오기
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
       return NextResponse.json(
-        { error: '필수 항목이 누락되었습니다. (플랫폼, 제품명, 제목, 내용, 평점)' },
-        { status: 400 }
+        { error: "로그인이 필요합니다." },
+        { status: 401 }
       );
     }
 
-    // 광고주 처리
-    const providersData = formData.get('providers_data');
-    if (providersData) {
-      try {
-        const providers = JSON.parse(providersData as string);
-        
-        if (providers && providers.length > 0) {
-          // 최대 3개의 광고주만 처리
-          for (let i = 0; i < Math.min(providers.length, 3); i++) {
-            const providerKey = `provider${i + 1}`;
-            reviewData[providerKey] = providers[i].id;
-          }
+    const userId = session.user.id;
+    // 클라이언트에서 전송한 데이터 파싱
+    const formData = await req.json();
+    console.log('formData: ', formData)
+    // 사용자 정보 가져오기
+    const userData = session.user.user_metadata || {};
+    console.log('userData: ', userData)
+    
+
+    // 이미지 저장 처리
+    const imageUrls = [];
+    if (formData.imageFiles && formData.imageFiles.length > 0) {
+      for (const base64Data of formData.imageFiles) {
+        // base64 형식에서 실제 바이너리 데이터로 변환
+        const base64WithoutPrefix = base64Data.split(",")[1];
+        const buffer = Buffer.from(base64WithoutPrefix, "base64");
+
+        // Supabase Storage에 업로드
+        const fileName = `review-image-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+        const { data, error } = await supabase.storage
+          .from("review-images")
+          .upload(`public/${fileName}`, buffer, {
+            contentType: "image/jpeg",
+            upsert: false,
+          });
+
+        if (error) {
+          throw error;
         }
-      } catch (error) {
-        console.error('광고주 데이터 처리 오류:', error);
+
+        // 업로드된 이미지 URL 저장
+        const { data: urlData } = supabase.storage
+          .from("review-images")
+          .getPublicUrl(`public/${fileName}`);
+
+        imageUrls.push(urlData.publicUrl);
       }
     }
 
-    // 이미지 처리
-    const imageFiles = formData.getAll('images') as File[];
-    let image_url = null;
-    
-    if (imageFiles && imageFiles.length > 0) {
-      // 첫 번째 이미지만 대표 이미지로 저장
-      image_url = await uploadImage(imageFiles[0], supabase);
-    }
-    
+    // 리뷰 데이터 저장
+    const reviewData = {
+      user_id: userId,
+      platform: formData.platform,
+      product_name: formData.productName,
+      option_name: formData.optionName,
+      price: formData.price ? parseInt(formData.price) : 0,
+      shipping_fee: formData.shippingFee ? parseInt(formData.shippingFee) : 0,
+      seller: formData.seller,
+      provider1: formData.providers_data?.[0]?.id || null,
+      provider2: formData.providers_data?.[1]?.id || null,
+      provider3: formData.providers_data?.[2]?.id || null,
+      status: formData.status || "approved",
+      start_date: formData.startDate,
+      end_date: formData.endDate,
+      title: formData.title,
+      content: formData.content,
+      rating: formData.rating ? parseInt(formData.rating) : 3,
+      product_url: formData.productUrl,
+      product_image: imageUrls.length > 0 ? imageUrls[0] : null,
+    };
+
     // 리뷰 데이터 저장
     const { data: reviewResult, error: reviewError } = await supabase
-      .from('reviews')
-      .insert({
-        ...reviewData,
-        image_url
-      })
-      .select()
+      .from("reviews")
+      .insert(reviewData)
+      .select("id")
       .single();
-    
-    if (reviewError) {
-      console.error('리뷰 저장 실패:', reviewError);
+
+    if (reviewError || !reviewResult) {
       return NextResponse.json(
-        { error: '리뷰 저장에 실패했습니다.', details: reviewError.message },
+        { error: "리뷰 등록에 실패했습니다." },
         { status: 500 }
       );
     }
 
-    // 참여자 데이터 처리
-    const participantsData = formData.get('participants_data');
-    let participantsProcessed = false;
-    
-    if (participantsData) {
-      try {
-        const participants = JSON.parse(participantsData as string);
-        
-        if (participants && participants.length > 0) {
-          // 참여자 정보 처리 및 이미지 업로드
-          const participantsToInsert = await Promise.all(
-            participants.map(async (participant: any) => {
-              let reviewImageUrl = null;
-              
-              // 리뷰 이미지 URL이 있고 base64 또는 data URL 형식이라면 업로드 처리
-              if (participant.reviewImage && (
-                participant.reviewImage.startsWith('data:') || 
-                participant.reviewImage.startsWith('blob:')
-              )) {
-                // 이 경우 프론트엔드에서 직접 파일 업로드 처리가 필요함
-                // 여기서는 임시로 null로 설정하고 추후 파일 업로드 로직 구현 필요
-                reviewImageUrl = null;
-              } else {
-                // 이미 URL이 있는 경우 그대로 사용
-                reviewImageUrl = participant.reviewImage || null;
-              }
-              
-              return {
-                review_id: reviewResult.id,
-                name: participant.name,
-                phone: participant.phone,
-                login_account: participant.loginAccount,
-                event_account: participant.eventAccount,
-                nickname: participant.nickname,
-                review_image: reviewImageUrl
-              };
-            })
-          );
-          
-          const { error: participantsError } = await supabase
-            .from('review_participants')
-            .insert(participantsToInsert);
-          
-          if (participantsError) {
-            console.error('참여자 저장 실패:', participantsError);
-            return NextResponse.json(
-              { 
-                success: true, 
-                data: reviewResult, 
-                warning: '리뷰는 저장되었지만 참여자 정보 저장에 실패했습니다: ' + participantsError.message 
-              }
-            );
-          }
-          
-          participantsProcessed = true;
-        }
-      } catch (error) {
-        console.error('참여자 데이터 처리 오류:', error);
-        return NextResponse.json(
-          { 
-            success: true, 
-            data: reviewResult, 
-            warning: '리뷰는 저장되었지만 참여자 정보 처리 중 오류가 발생했습니다.' 
-          }
-        );
-      }
+    const reviewId = reviewResult.id;
+
+    // 리뷰 참가자 테이블에 데이터 추가
+    const { error: participantError } = await supabase
+      .from("review_participants")
+      .insert({
+        review_id: reviewId,
+        reviewer_id: userId,
+        name: userData.full_name || "리뷰어",
+        phone: userData.phone || "",
+        login_account: session.user.email || "",
+        event_account: session.user.email || "",
+        nickname: userData.username || "리뷰어",
+        review_image: imageUrls.length > 0 ? imageUrls[0] : null,
+      });
+
+    if (participantError) {
+      // 참가자 등록 실패 시 로그 기록
+      console.log("리뷰 참가자 등록 중 오류:", participantError);
+      console.log("참가자 데이터:", {
+        review_id: reviewId,
+        reviewer_id: userId,
+        user_data: userData,
+      });
+
+      // 여기서 리뷰를 삭제하지는 않지만, 참가자 등록 실패를 보고합니다
+      return NextResponse.json(
+        {
+          warning: "리뷰는 등록되었지만 참가자 정보 등록에 실패했습니다.",
+          reviewId: reviewId,
+          success: true,
+        },
+        { status: 201 }
+      );
     }
-    
+
     return NextResponse.json({ 
-      success: true, 
-      data: reviewResult,
-      participants_processed: participantsProcessed
-    });
+      success: true,
+      reviewId: reviewId 
+    }, { status: 201 });
   } catch (error) {
-    console.error('오류:', error);
+    console.log("리뷰 등록 중 오류:", error);
     return NextResponse.json(
-      { error: '요청 처리 중 오류가 발생했습니다.' },
+      { error: "리뷰 등록에 실패했습니다." },
       { status: 500 }
     );
   }
-} 
+}
