@@ -1,8 +1,7 @@
 'use client'
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { mockReviews } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
-import { Review } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, ChevronLeft, ChevronRight, Download, Plus, Edit, Trash2 } from "lucide-react";
@@ -25,46 +24,107 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { createClient } from "@/utils/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+
+interface Review {
+  id: string | number;
+  title: string;
+  content: string;
+  rating: number;
+  status: string;
+  author_id?: string;
+  author_name?: string;
+  product_id?: string;
+  product_name: string;
+  platform: string;
+  image_url?: string;
+  option_name?: string;
+  price?: number;
+  shipping_fee?: number;
+  seller?: string;
+  participants?: number;
+  start_date: string;
+  end_date: string;
+  period?: string;
+  product_url?: string;
+  created_at: string;
+  updated_at?: string;
+}
 
 export default function ProviderReviewsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchCategory, setSearchCategory] = useState("title");
+  const [searchCategory, setSearchCategory] = useState("product_name");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [pageSize, setPageSize] = useState(10);
-  const [filteredReviews, setFilteredReviews] = useState(mockReviews);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedReviews, setSelectedReviews] = useState<Set<string>>(new Set());
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [selectedReviews, setSelectedReviews] = useState<Set<string | number>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null);
+  const [reviewToDelete, setReviewToDelete] = useState<string | number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
-  const handleSearch = () => {
-    if (!searchTerm.trim() && !startDate && !endDate) {
-      setFilteredReviews(mockReviews);
-      return;
+  const fetchReviews = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `/api/provider/reviews?searchCategory=${searchCategory}&searchTerm=${encodeURIComponent(searchTerm)}&startDate=${startDate}&endDate=${endDate}&page=${currentPage}&pageSize=${pageSize}`
+      );
+      
+      if (!response.ok) {
+        toast({
+          title: "오류",
+          description: "데이터를 불러오는데 실패했습니다.",
+          variant: "destructive",
+        });
+        return; 
+      }
+      
+      const data = await response.json();
+      setReviews(data.reviews);
+      setTotalCount(data.totalCount);
+      setTotalPages(data.totalPages);
+    } catch (error) {
+      toast({
+        title: "오류",
+        description: "리뷰 데이터를 불러오는데 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    const filtered = mockReviews.filter(review => {
-      const matchesSearch = !searchTerm.trim() || 
-        (searchCategory in review && 
-         typeof review[searchCategory as keyof Review] === 'string' &&
-         (review[searchCategory as keyof Review] as string).toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      const matchesDate = (!startDate || new Date(review.createdAt) >= new Date(startDate)) &&
-                         (!endDate || new Date(review.createdAt) <= new Date(endDate));
-      
-      return matchesSearch && matchesDate;
-    });
-    
-    setFilteredReviews(filtered);
-    setCurrentPage(1);
   };
 
-  // 페이지네이션 계산
-  const totalPages = Math.ceil(filteredReviews.length / pageSize);
+  useEffect(() => {
+    fetchReviews();
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchReviews();
+    };
+
+    fetchReviews();
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchReviews();
+  };
+
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedReviews = filteredReviews.slice(startIndex, startIndex + pageSize);
 
   const getStatusStyle = (status: Review["status"]) => {
     switch (status) {
@@ -90,14 +150,14 @@ export default function ProviderReviewsPage() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allIds = paginatedReviews.map(review => review.id);
+      const allIds = reviews.map(review => review.id);
       setSelectedReviews(new Set(allIds));
     } else {
       setSelectedReviews(new Set());
     }
   };
 
-  const handleSelectReview = (reviewId: string, checked: boolean) => {
+  const handleSelectReview = (reviewId: string | number, checked: boolean) => {
     const newSelected = new Set(selectedReviews);
     if (checked) {
       newSelected.add(reviewId);
@@ -108,21 +168,44 @@ export default function ProviderReviewsPage() {
   };
 
   const handleExcelDownload = () => {
-    // 엑셀 다운로드 로직 구현
-    console.log('엑셀 다운로드');
+    toast({ title: "알림", description: "엑셀 다운로드 기능이 준비중입니다." });
   };
 
-  const handleDeleteReview = (id: string) => {
+  const handleDeleteReview = (id: string | number) => {
     setReviewToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (reviewToDelete) {
-      // TODO: API 연동
-      console.log('제품 삭제:', reviewToDelete);
-      setDeleteDialogOpen(false);
-      setReviewToDelete(null);
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/provider/reviews/${reviewToDelete}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          toast({
+            title: "오류",
+            description: "삭제에 실패했습니다.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        toast({ title: "성공", description: "리뷰가 삭제되었습니다." });
+        await fetchReviews();
+        setDeleteDialogOpen(false);
+        setReviewToDelete(null);
+      } catch (error) {
+        toast({
+          title: "오류",
+          description: "리뷰 삭제 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -130,17 +213,17 @@ export default function ProviderReviewsPage() {
     router.push('/provider/reviews/add');
   };
 
-  const handleEditProduct = (id: string) => {
+  const handleEditProduct = (id: string | number) => {
     router.push(`/provider/reviews/${id}`);
   };
 
-  const handleViewReview = (id: string) => {
+  const handleViewReview = (id: string | number) => {
     router.push(`/provider/reviews/${id}`);
   };
 
   return (
     <div className="space-y-4 w-full h-full">
-      <h1 className="text-2xl font-bold tracking-tight">이벤트 관리</h1>
+      <h1 className="text-2xl font-bold tracking-tight">이벤트 목록</h1>
       <p className="text-muted-foreground">플랫폼에 등록된 모든 이벤트를 관리합니다.</p>
       
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -151,9 +234,11 @@ export default function ProviderReviewsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="title">제목</SelectItem>
-              <SelectItem value="productName">제품</SelectItem>
-              <SelectItem value="authorName">작성자</SelectItem>
+              <SelectItem value="product_name">제품</SelectItem>
+              <SelectItem value="author_name">작성자</SelectItem>
               <SelectItem value="content">내용</SelectItem>
+              <SelectItem value="platform">플랫폼</SelectItem>
+              <SelectItem value="seller">판매자</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -222,54 +307,67 @@ export default function ProviderReviewsPage() {
             </tr>
           </thead>
           <tbody>
-            {paginatedReviews.map((review, index) => (
-              <tr 
-                key={review.id} 
-                className="border-b hover:bg-muted/50 cursor-pointer" 
-                onClick={() => handleViewReview(review.id)}
-              >
-                <td className="p-4 text-center">{startIndex + index + 1}</td>
-                <td className="p-4 text-center">{review.platform}</td>
-                <td className="p-4 text-center">
-                  {review.imageUrl ? (
-                    <img 
-                      src={review.imageUrl} 
-                      alt={review.productName} 
-                      className="w-16 h-16 object-cover mx-auto rounded-md"
-                    />
-                  ) : (
-                    <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
-                  )}
-                </td>
-                <td className="p-4 text-center">{review.productName}</td>
-                <td className="p-4 text-center">{review.optionName}</td>
-                <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
-                <td className="p-4 text-center">{review.shippingFee?.toLocaleString() ?? '0'}원</td>
-                <td className="p-4 text-center">{review.seller}</td>
-                <td className="p-4 text-center">{review.period}</td>
-                <td className="p-4 text-center">
-                  <a 
-                    href={review.productUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:text-blue-700 underline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    링크
-                  </a>
+            {loading ? (
+              <tr>
+                <td colSpan={11} className="text-center p-4">
+                  로딩 중...
                 </td>
               </tr>
-            ))}
+            ) : reviews.length === 0 ? (
+              <tr>
+                <td colSpan={11} className="text-center p-4">
+                  데이터가 없습니다.
+                </td>
+              </tr>
+            ) : (
+              reviews.map((review, index) => (
+                <tr 
+                  key={review.id} 
+                  className="border-b hover:bg-muted/50 cursor-pointer" 
+                  onClick={() => handleViewReview(review.id)}
+                >
+                  <td className="p-4 text-center">{startIndex + index + 1}</td>
+                  <td className="p-4 text-center">{review.platform}</td>
+                  <td className="p-4 text-center">
+                    {review.image_url ? (
+                      <img 
+                        src={review.image_url}
+                        alt={review.product_name}
+                        className="w-16 h-16 object-cover mx-auto rounded-md"
+                      />
+                    ) : (
+                      <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
+                    )}
+                  </td>
+                  <td className="p-4 text-center">{review.product_name}</td>
+                  <td className="p-4 text-center">{review.option_name}</td>
+                  <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
+                  <td className="p-4 text-center">{review.shipping_fee?.toLocaleString() ?? '0'}원</td>
+                  <td className="p-4 text-center">{review.seller}</td>
+                  <td className="p-4 text-center">{review.period}</td>
+                  <td className="p-4 text-center">
+                    <a 
+                      href={review.product_url}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:text-blue-700 underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      링크
+                    </a>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
       
-      {/* 페이지네이션 */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          전체 {filteredReviews.length}개 항목 중 {startIndex + 1}-{Math.min(startIndex + pageSize, filteredReviews.length)}개 표시
+          전체 {totalCount}개 항목 중 {reviews.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + pageSize, totalCount)}개 표시
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -309,9 +407,9 @@ export default function ProviderReviewsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>리뷰 삭제</AlertDialogTitle>
+            <AlertDialogTitle>이벤트 삭제</AlertDialogTitle>
             <AlertDialogDescription>
-              정말로 이 리뷰를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+              정말로 이 이벤트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

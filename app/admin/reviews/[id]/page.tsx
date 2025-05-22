@@ -31,6 +31,7 @@ import Image from "next/image";
 import { useToast } from "@/components/ui/use-toast";
 import { Spinner } from "@/components/ui/spinner";
 import { createClient } from "@/utils/supabase/client";
+import { MultiProviderSelector, Provider } from "@/components/MultiProviderSelector";
 
 // 참여자 타입 정의
 interface Participant {
@@ -67,6 +68,12 @@ interface Review {
   updated_at?: string;
   start_date?: string;
   end_date?: string;
+  provider1?: string;
+  provider2?: string;
+  provider3?: string;
+  provider1_name?: string;
+  provider2_name?: string;
+  provider3_name?: string;
 }
 
 export default function EditReviewPage({
@@ -81,6 +88,7 @@ export default function EditReviewPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProviders, setSelectedProviders] = useState<Provider[]>([]);
 
   const [formData, setFormData] = useState({
     platform: "",
@@ -90,7 +98,7 @@ export default function EditReviewPage({
     shipping_fee: "",
     seller: "",
     participants: "",
-    status: "pending",
+    status: "",
     start_date: "",
     end_date: "",
     title: "",
@@ -106,6 +114,43 @@ export default function EditReviewPage({
     useState<Participant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const supabase = createClient();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // 현재 페이지에 따라 표시할 데이터 계산
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentParticipants = participants.slice(indexOfFirstItem, indexOfLastItem);
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // 페이지네이션 버튼 생성
+  const renderPagination = () => {
+    const pageNumbers = [];
+    for (let i = 1; i <= Math.ceil(participants.length / itemsPerPage); i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <div className="flex justify-center mt-4">
+        {pageNumbers.map((number) => (
+          <button
+            key={number}
+            onClick={() => handlePageChange(number)}
+            className={`px-3 py-1 mx-1 border rounded ${
+              currentPage === number ? "bg-primary text-white" : "bg-white"
+            }`}
+          >
+            {number}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   useEffect(() => {
     const fetchReviewData = async () => {
@@ -168,6 +213,31 @@ export default function EditReviewPage({
             product_url: review.product_url || "",
             period: periodValue || review.period || "",
           });
+
+          // 광고주 정보 설정
+          const providers: Provider[] = [];
+          if (review.provider1 && review.provider1_name) {
+            providers.push({
+              id: review.provider1,
+              full_name: review.provider1_name,
+              email: ""
+            });
+          }
+          if (review.provider2 && review.provider2_name) {
+            providers.push({
+              id: review.provider2,
+              full_name: review.provider2_name,
+              email: ""
+            });
+          }
+          if (review.provider3 && review.provider3_name) {
+            providers.push({
+              id: review.provider3,
+              full_name: review.provider3_name,
+              email: ""
+            });
+          }
+          setSelectedProviders(providers);
 
           // 이미지 URL이 있으면 이미지 배열에 추가
           if (review.image_url) {
@@ -263,6 +333,13 @@ export default function EditReviewPage({
         imageUrl = images[0].preview;
       }
 
+      // provider 처리
+      const provider1 = selectedProviders.length > 0 ? selectedProviders[0].id : "";
+      const provider2 = selectedProviders.length > 1 ? selectedProviders[1].id : "";
+      const provider3 = selectedProviders.length > 2 ? selectedProviders[2].id : "";
+
+      console.log("제출하는 광고주 정보:", { provider1, provider2, provider3 });
+      
       // 리뷰 데이터 업데이트
       const reviewData = {
         platform: formData.platform,
@@ -280,6 +357,9 @@ export default function EditReviewPage({
         rating: formData.rating,
         product_url: formData.product_url,
         image_url: imageUrl,
+        provider1,
+        provider2,
+        provider3
       };
 
       console.log("제출하는 데이터:", reviewData);
@@ -298,17 +378,34 @@ export default function EditReviewPage({
       }
 
       const result = await response.json();
-      console.log("수정 결과:", result);
-
-      // 백엔드 응답에서 바로 리뷰 데이터 사용
+      
+      // 응답 데이터 확인 로깅
+      console.log("API 응답 데이터:", result);
       if (result.review) {
-        const review = result.review;
-
+        console.log("받은 광고주 정보:", {
+          provider1: result.review.provider1,
+          provider2: result.review.provider2,
+          provider3: result.review.provider3,
+          provider1_name: result.review.provider1_name,
+          provider2_name: result.review.provider2_name,
+          provider3_name: result.review.provider3_name
+        });
+      }
+      
+      // 성공 메시지 표시
+      toast({
+        title: "수정 완료",
+        description: "리뷰가 성공적으로 수정되었습니다.",
+      });
+      
+      if (result.review) {
+        const updatedReview = result.review;
+        
         // 시작일과 종료일로부터 이벤트 기간 계산
         let periodValue = "";
-        if (review.start_date && review.end_date) {
-          const startDate = new Date(review.start_date);
-          const endDate = new Date(review.end_date);
+        if (updatedReview.start_date && updatedReview.end_date) {
+          const startDate = new Date(updatedReview.start_date);
+          const endDate = new Date(updatedReview.end_date);
 
           // 날짜 형식 변환 (YYYY.MM.DD 형식)
           const formatDate = (date: Date) => {
@@ -320,91 +417,63 @@ export default function EditReviewPage({
 
           periodValue = `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
         }
-
-        // 상태 업데이트
-        setFormData({
-          platform: review.platform || "",
-          product_name: review.product_name || "",
-          option_name: review.option_name || "",
-          price: review.price?.toString() || "",
-          shipping_fee: review.shipping_fee?.toString() || "",
-          seller: review.seller || "",
-          participants: review.participants?.toString() || "",
-          status: review.status || "pending",
-          start_date: review.start_date
-            ? new Date(review.start_date).toISOString().substring(0, 16)
-            : "",
-          end_date: review.end_date
-            ? new Date(review.end_date).toISOString().substring(0, 16)
-            : "",
-          title: review.title || "",
-          content: review.content || "",
-          rating: review.rating?.toString() || "",
-          product_url: review.product_url || "",
-          period: periodValue || review.period || "",
-        });
-      } else {
-        // 백엔드에서 리뷰 데이터를 반환하지 않은 경우 별도로 조회
-        const refreshResponse = await fetch(
-          `/api/reviews/${unwrappedParams.id}`
-        );
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json();
-          const review = refreshData.review;
-
-          // 시작일과 종료일로부터 이벤트 기간 계산
-          let periodValue = "";
-          if (review.start_date && review.end_date) {
-            const startDate = new Date(review.start_date);
-            const endDate = new Date(review.end_date);
-
-            // 날짜 형식 변환 (YYYY.MM.DD 형식)
-            const formatDate = (date: Date) => {
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, "0");
-              const day = String(date.getDate()).padStart(2, "0");
-              return `${year}.${month}.${day}`;
-            };
-
-            periodValue = `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
-          }
-
-          // 상태 업데이트
-          setFormData({
-            platform: review.platform || "",
-            product_name: review.product_name || "",
-            option_name: review.option_name || "",
-            price: review.price?.toString() || "",
-            shipping_fee: review.shipping_fee?.toString() || "",
-            seller: review.seller || "",
-            participants: review.participants?.toString() || "",
-            status: review.status || "pending",
-            start_date: review.start_date
-              ? new Date(review.start_date).toISOString().substring(0, 16)
-              : "",
-            end_date: review.end_date
-              ? new Date(review.end_date).toISOString().substring(0, 16)
-              : "",
-            title: review.title || "",
-            content: review.content || "",
-            rating: review.rating?.toString() || "",
-            product_url: review.product_url || "",
-            period: periodValue || review.period || "",
+        
+        // 광고주 정보 유지
+        const updatedProviders: Provider[] = [];
+        
+        // 서버에서 응답한 광고주 정보가 있으면 사용
+        if (updatedReview.provider1 && updatedReview.provider1_name) {
+          updatedProviders.push({
+            id: updatedReview.provider1,
+            full_name: updatedReview.provider1_name,
+            email: ""
           });
         }
+        if (updatedReview.provider2 && updatedReview.provider2_name) {
+          updatedProviders.push({
+            id: updatedReview.provider2,
+            full_name: updatedReview.provider2_name,
+            email: ""
+          });
+        }
+        if (updatedReview.provider3 && updatedReview.provider3_name) {
+          updatedProviders.push({
+            id: updatedReview.provider3,
+            full_name: updatedReview.provider3_name,
+            email: ""
+          });
+        }
+        
+        // 서버 응답에 광고주 정보가 없고, 선택된 광고주가 있을 경우 기존 선택 정보 유지
+        if (updatedProviders.length === 0 && selectedProviders.length > 0) {
+          setSelectedProviders(selectedProviders);
+        } else {
+          setSelectedProviders(updatedProviders);
+        }
+
+        setFormData({
+          platform: updatedReview.platform || "",
+          product_name: updatedReview.product_name || "",
+          option_name: updatedReview.option_name || "",
+          price: updatedReview.price?.toString() || "",
+          shipping_fee: updatedReview.shipping_fee?.toString() || "",
+          seller: updatedReview.seller || "",
+          participants: updatedReview.participants?.toString() || "",
+          status: updatedReview.status || "pending",
+          start_date: updatedReview.start_date
+            ? new Date(updatedReview.start_date).toISOString().substring(0, 16)
+            : "",
+          end_date: updatedReview.end_date
+            ? new Date(updatedReview.end_date).toISOString().substring(0, 16)
+            : "",
+          title: updatedReview.title || "",
+          content: updatedReview.content || "",
+          rating: updatedReview.rating?.toString() || "",
+          product_url: updatedReview.product_url || "",
+          period: periodValue || updatedReview.period || "",
+        });
       }
-
-      toast({
-        title: "성공",
-        description: "리뷰가 성공적으로 수정되었습니다.",
-      });
-
-      // 성공 메시지 표시 후 리스트 페이지로 리다이렉트 제거
-      // setTimeout(() => {
-      //   router.push("/admin/reviews");
-      // }, 1500);
     } catch (err) {
-      console.error("리뷰 수정 오류:", err);
       toast({
         title: "오류",
         description:
@@ -453,6 +522,7 @@ export default function EditReviewPage({
       </div>
     );
   }
+  console.log('selectedProviders', selectedProviders)
 
   return (
     <div className="space-y-6">
@@ -577,6 +647,13 @@ export default function EditReviewPage({
                 }))
               }
               placeholder="옵션명을 입력하세요"
+            />
+          </div>
+          <div className="space-y-2 col-span-2">
+            <Label>광고주</Label>
+            <MultiProviderSelector 
+              value={selectedProviders}
+              onChange={setSelectedProviders}
             />
           </div>
 
@@ -752,9 +829,9 @@ export default function EditReviewPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {participants.map((participant, index) => (
+                {currentParticipants.map((participant, index) => (
                   <TableRow key={participant.id}>
-                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{indexOfFirstItem + index + 1}</TableCell>
                     <TableCell>{participant.name}</TableCell>
                     <TableCell>{participant.phone}</TableCell>
                     <TableCell>{participant.login_account}</TableCell>
@@ -776,7 +853,7 @@ export default function EditReviewPage({
                     </TableCell>
                   </TableRow>
                 ))}
-                {participants.length === 0 && (
+                {currentParticipants.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="h-24 text-center">
                       등록된 참여자가 없습니다.
@@ -787,6 +864,8 @@ export default function EditReviewPage({
             </Table>
           </div>
         </div>
+
+        {renderPagination()}
       </form>
 
       <Dialog

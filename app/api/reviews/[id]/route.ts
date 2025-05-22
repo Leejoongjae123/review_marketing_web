@@ -18,7 +18,8 @@ export async function GET(
     const supabase = await createClient(supabaseUrl, supabaseKey);
     const { id } = await context.params;
     const reviewId = id;
-    // 리뷰 정보 가져오기
+    
+    // 리뷰 정보 가져오기 (기본 정보)
     const { data: review, error } = await supabase
       .from('reviews')
       .select('*')
@@ -34,7 +35,49 @@ export async function GET(
       return NextResponse.json({ error: '리뷰를 찾을 수 없습니다.' }, { status: 404 });
     }
     
-    return NextResponse.json({ review });
+    // provider1, provider2, provider3의 이름 정보 가져오기
+    const reviewWithProviders = { ...review };
+    
+    // provider1 정보 가져오기
+    if (review.provider1) {
+      const { data: provider1Data, error: provider1Error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', review.provider1)
+        .single();
+        
+      if (!provider1Error && provider1Data) {
+        reviewWithProviders.provider1_name = provider1Data.full_name;
+      }
+    }
+    
+    // provider2 정보 가져오기
+    if (review.provider2) {
+      const { data: provider2Data, error: provider2Error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', review.provider2)
+        .single();
+        
+      if (!provider2Error && provider2Data) {
+        reviewWithProviders.provider2_name = provider2Data.full_name;
+      }
+    }
+    
+    // provider3 정보 가져오기
+    if (review.provider3) {
+      const { data: provider3Data, error: provider3Error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', review.provider3)
+        .single();
+        
+      if (!provider3Error && provider3Data) {
+        reviewWithProviders.provider3_name = provider3Data.full_name;
+      }
+    }
+    
+    return NextResponse.json({ review: reviewWithProviders });
   } catch (error) {
     console.error('리뷰 조회 오류:', error);
     return NextResponse.json({ error: '리뷰 조회 중 오류가 발생했습니다.' }, { status: 500 });
@@ -91,6 +134,9 @@ export async function PUT(
       rating: rating,
       product_url: requestData.product_url,
       image_url: requestData.image_url,
+      provider1: requestData.provider1 || null,
+      provider2: requestData.provider2 || null,
+      provider3: requestData.provider3 || null,
       updated_at: new Date().toISOString()
     };
     
@@ -128,7 +174,49 @@ export async function PUT(
       reviewData = fetchedReview;
     }
     
-    return NextResponse.json({ message: '리뷰가 성공적으로 업데이트되었습니다.', review: reviewData });
+    // provider1, provider2, provider3의 이름 정보 가져오기
+    const reviewWithProviders = { ...reviewData };
+    
+    // provider1 정보 가져오기
+    if (reviewData.provider1) {
+      const { data: provider1Data, error: provider1Error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', reviewData.provider1)
+        .single();
+        
+      if (!provider1Error && provider1Data) {
+        reviewWithProviders.provider1_name = provider1Data.full_name;
+      }
+    }
+    
+    // provider2 정보 가져오기
+    if (reviewData.provider2) {
+      const { data: provider2Data, error: provider2Error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', reviewData.provider2)
+        .single();
+        
+      if (!provider2Error && provider2Data) {
+        reviewWithProviders.provider2_name = provider2Data.full_name;
+      }
+    }
+    
+    // provider3 정보 가져오기
+    if (reviewData.provider3) {
+      const { data: provider3Data, error: provider3Error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', reviewData.provider3)
+        .single();
+        
+      if (!provider3Error && provider3Data) {
+        reviewWithProviders.provider3_name = provider3Data.full_name;
+      }
+    }
+    
+    return NextResponse.json({ message: '리뷰가 성공적으로 업데이트되었습니다.', review: reviewWithProviders });
   } catch (error) {
     console.error('리뷰 업데이트 오류:', error);
     return NextResponse.json({ error: '리뷰 업데이트 중 오류가 발생했습니다.' }, { status: 500 });

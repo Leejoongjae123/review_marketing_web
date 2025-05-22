@@ -3,6 +3,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import Providers from "./providers";
 import "./globals.css";
+import { MessageHandler } from "@/components/MessageHandler";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -36,6 +37,7 @@ export default function RootLayout({
           <Providers>
             {children}
           </Providers>
+          <MessageHandler />
           <Toaster />
         </ThemeProvider>
       </body>

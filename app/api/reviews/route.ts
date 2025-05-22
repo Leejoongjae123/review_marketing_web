@@ -40,11 +40,59 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
+    // 각 리뷰에 대해 provider 정보 가져오기
+    const reviewsWithProviders = await Promise.all(
+      reviews.map(async (review) => {
+        const reviewWithProviders = { ...review };
+        
+        // provider1 정보 가져오기
+        if (review.provider1) {
+          const { data: provider1Data, error: provider1Error } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', review.provider1)
+            .single();
+            
+          if (!provider1Error && provider1Data) {
+            reviewWithProviders.provider1_name = provider1Data.full_name;
+          }
+        }
+        
+        // provider2 정보 가져오기
+        if (review.provider2) {
+          const { data: provider2Data, error: provider2Error } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', review.provider2)
+            .single();
+            
+          if (!provider2Error && provider2Data) {
+            reviewWithProviders.provider2_name = provider2Data.full_name;
+          }
+        }
+        
+        // provider3 정보 가져오기
+        if (review.provider3) {
+          const { data: provider3Data, error: provider3Error } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', review.provider3)
+            .single();
+            
+          if (!provider3Error && provider3Data) {
+            reviewWithProviders.provider3_name = provider3Data.full_name;
+          }
+        }
+        
+        return reviewWithProviders;
+      })
+    );
+
     const totalCount = count || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
 
     return NextResponse.json({
-      reviews,
+      reviews: reviewsWithProviders,
       totalCount,
       totalPages,
     });
@@ -101,7 +149,26 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     
     // 리뷰 데이터 추출
-    const reviewData = {
+    const reviewData: {
+      platform: string;
+      product_name: string;
+      option_name: string;
+      price: number;
+      shipping_fee: number;
+      seller: string;
+      participants: number;
+      status: string;
+      start_date: string | null;
+      end_date: string | null;
+      title: string;
+      content: string;
+      rating: number;
+      product_url: string;
+      provider1: string | null;
+      provider2: string | null;
+      provider3: string | null;
+      [key: string]: string | number | null;
+    } = {
       platform: formData.get('platform') as string,
       product_name: formData.get('productName') as string,
       option_name: formData.get('optionName') as string,
@@ -116,6 +183,9 @@ export async function POST(request: NextRequest) {
       content: formData.get('content') as string,
       rating: Math.min(Math.max(parseInt(formData.get('rating') as string) || 3, 1), 5),
       product_url: formData.get('productUrl') as string,
+      provider1: null,
+      provider2: null,
+      provider3: null,
     };
 
     // 필수 필드 확인
@@ -124,6 +194,24 @@ export async function POST(request: NextRequest) {
         { error: '필수 항목이 누락되었습니다. (플랫폼, 제품명, 제목, 내용, 평점)' },
         { status: 400 }
       );
+    }
+
+    // 광고주 처리
+    const providersData = formData.get('providers_data');
+    if (providersData) {
+      try {
+        const providers = JSON.parse(providersData as string);
+        
+        if (providers && providers.length > 0) {
+          // 최대 3개의 광고주만 처리
+          for (let i = 0; i < Math.min(providers.length, 3); i++) {
+            const providerKey = `provider${i + 1}`;
+            reviewData[providerKey] = providers[i].id;
+          }
+        }
+      } catch (error) {
+        console.error('광고주 데이터 처리 오류:', error);
+      }
     }
 
     // 이미지 처리

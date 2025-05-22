@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { Plus, X, Eye } from "lucide-react";
 import Image from "next/image";
 import { toast } from "@/components/ui/use-toast";
+import { MultiProviderSelector, Provider } from "@/components/MultiProviderSelector";
 
 // 참여자 타입 정의
 interface Participant {
@@ -52,7 +53,7 @@ export default function AddReviewPage() {
     shippingFee: "",
     seller: "",
     participants: "",
-    status: "pending",
+    status: "approved",
     startDate: "",
     endDate: "",
     title: "",
@@ -75,6 +76,12 @@ export default function AddReviewPage() {
   const [newParticipantImages, setNewParticipantImages] = useState<{ file: File; preview: string }[]>([]);
   const newParticipantFileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedProviders, setSelectedProviders] = useState<Provider[]>([]);
+  
+  // 선택된 광고주 상태 변경 시 로그 출력
+  useEffect(() => {
+    console.log("선택된 광고주 목록:", selectedProviders);
+  }, [selectedProviders]);
 
   const handleViewReview = (participant: Participant) => {
     setSelectedParticipant(participant);
@@ -104,6 +111,11 @@ export default function AddReviewPage() {
       // 참여자 데이터를 JSON 문자열로 변환하여 추가
       if (participants.length > 0) {
         submitFormData.append('participants_data', JSON.stringify(participants));
+      }
+      
+      // 선택된 광고주 정보 추가
+      if (selectedProviders.length > 0) {
+        submitFormData.append('providers_data', JSON.stringify(selectedProviders));
       }
       
       // API 호출
@@ -338,6 +350,14 @@ export default function AddReviewPage() {
             />
           </div>
 
+          <div className="space-y-2 col-span-2">
+            <Label>광고주</Label>
+            <MultiProviderSelector 
+              value={selectedProviders}
+              onChange={setSelectedProviders}
+            />
+          </div>
+
           <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="price">가격</Label>
             <Input
@@ -453,9 +473,6 @@ export default function AddReviewPage() {
             </div>
           </div>
         </div>
-
-        {/* 참여자 섹션 추가 */}
-        
 
         <div className="flex justify-end gap-4">
           <Button

@@ -56,7 +56,7 @@ export function AuthStatusProvider({ children }: { children: ReactNode }) {
 
         // 비활성화된 계정인 경우 로그인 페이지로 리디렉션
         if (data.authenticated && data.status === 'inactive') {
-          router.push('/client/auth?message=inactive_account')
+          router.push('/?message=inactive_account')
         }
       } catch (error) {
         setAuthStatus(prev => ({ ...prev, loading: false }))

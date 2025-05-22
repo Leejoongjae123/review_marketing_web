@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function Home() {
   return (
@@ -10,8 +11,8 @@ export default function Home() {
         <p className="text-muted-foreground">역할에 맞는 서비스로 이동하세요.</p>
       </div>
 
+      <Toaster />
       
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl">
         <Card className="flex flex-col h-full shadow-lg">
           <CardHeader className="bg-purple-600 text-white">
