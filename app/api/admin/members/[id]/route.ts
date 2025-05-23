@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
 
 // 특정 회원 정보 조회
@@ -191,7 +191,7 @@ export async function DELETE(
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   const supabase = await createClient();
   const { id } = await params;
   const { newPassword } = await request.json();

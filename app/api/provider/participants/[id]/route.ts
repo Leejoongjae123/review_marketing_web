@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    const id = await params.id;
+    const { id } = await params;
     const supabase = await createClient();
     
     // 현재 로그인한 사용자(광고주) 정보 가져오기

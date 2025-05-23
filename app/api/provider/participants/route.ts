@@ -45,7 +45,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           provider2,
           provider3
         )
-      `)
+      `, { count: 'exact' })
       .or(`reviews.provider1.eq.${providerId},reviews.provider2.eq.${providerId},reviews.provider3.eq.${providerId}`);
     
     // 검색어가 있는 경우 검색 조건 추가
@@ -68,22 +68,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
     
-    // 카운트 쿼리 실행
-    const { count: totalCount, error: countError } = await query.count();
-    
-    if (countError) {
-      return NextResponse.json(
-        { error: "데이터 조회 중 오류가 발생했습니다." },
-        { status: 500 }
-      );
-    }
-    
     // 페이지네이션 적용
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
     
     // 최종 쿼리 실행
-    const { data, error } = await query
+    const { data, error, count } = await query
       .range(from, to)
       .order("created_at", { ascending: false });
     
@@ -95,7 +85,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
     // 응답 데이터 구성
-    const totalPages = Math.ceil((totalCount || 0) / pageSize);
+    const totalCount = count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
     
     return NextResponse.json({
       data,
