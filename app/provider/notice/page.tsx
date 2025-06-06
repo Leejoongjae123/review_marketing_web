@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ interface Notice {
   updated_at?: string;
 }
 
-export default function ProviderNoticePage() {
+function ProviderNoticeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
@@ -351,5 +351,13 @@ export default function ProviderNoticePage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function ProviderNoticePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-40">로딩 중...</div>}>
+      <ProviderNoticeContent />
+    </Suspense>
   );
 } 

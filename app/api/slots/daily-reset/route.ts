@@ -101,14 +101,16 @@ export async function GET(request: NextRequest) {
 
     slotSummary?.forEach(slot => {
       const reviewId = slot.review_id;
+      const review = slot.reviews as any; // 타입 단언으로 해결
+      
       if (!reviewStats.has(reviewId)) {
         reviewStats.set(reviewId, {
           review_id: reviewId,
-          platform: slot.reviews.platform,
-          name: slot.reviews.platform === '쿠팡' || slot.reviews.platform === '스토어' 
-            ? slot.reviews.product_name 
-            : slot.reviews.store_name,
-          daily_count: slot.reviews.daily_count,
+          platform: review.platform,
+          name: review.platform === '쿠팡' || review.platform === '스토어' 
+            ? review.product_name 
+            : review.store_name,
+          daily_count: review.daily_count,
           total: 0,
           available: 0,
           reserved: 0

@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,7 @@ interface Notice {
   updated_at?: string;
 }
 
-export default function ClientNoticePage() {
+function NoticePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
@@ -366,5 +366,21 @@ export default function ClientNoticePage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="space-y-4 w-full h-full">
+      
+    </div>
+  );
+}
+
+export default function ClientNoticePage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <NoticePageContent />
+    </Suspense>
   );
 } 

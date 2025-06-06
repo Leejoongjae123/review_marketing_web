@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,8 @@ interface Notice {
   updated_at?: string;
 }
 
-export default function ClientNoticePage() {
+// SearchParams를 사용하는 컴포넌트를 별도로 분리
+function NoticePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
@@ -351,5 +352,23 @@ export default function ClientNoticePage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// 로딩 컴포넌트
+function NoticePageLoading() {
+  return (
+    <div className="space-y-4 w-full h-full">
+      
+    </div>
+  );
+}
+
+// 메인 컴포넌트
+export default function ClientNoticePage() {
+  return (
+    <Suspense fallback={<NoticePageLoading />}>
+      <NoticePageContent />
+    </Suspense>
   );
 } 
