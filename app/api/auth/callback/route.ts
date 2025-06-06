@@ -4,6 +4,29 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const runtime = 'edge';
 
+// 전화번호를 한국 형식으로 변환하는 함수
+function formatPhoneNumber(phoneNumber: string): string {
+  if (!phoneNumber) return '';
+  
+  // +82로 시작하는 경우 제거하고 0으로 시작하도록 변환
+  let cleanNumber = phoneNumber.replace(/\D/g, ''); // 숫자만 추출
+  
+  if (cleanNumber.startsWith('82')) {
+    cleanNumber = '0' + cleanNumber.substring(2);
+  }
+  
+  // 11자리 숫자인 경우 010-XXXX-XXXX 형식으로 변환
+  if (cleanNumber.length === 11 && cleanNumber.startsWith('010')) {
+    const first = cleanNumber.slice(0, 3);
+    const middle = cleanNumber.slice(3, 7);
+    const last = cleanNumber.slice(7, 11);
+    return `${first}-${middle}-${last}`;
+  }
+  
+  // 다른 형식인 경우 원본 반환 (하이픈 제거된 숫자만)
+  return cleanNumber;
+}
+
 async function getKakaoUserInfo(accessToken: string) {
   try {
     const response = await fetch('https://kapi.kakao.com/v2/user/me', {
@@ -68,7 +91,8 @@ export async function GET(request: Request) {
             
             if (kakaoUserInfo && kakaoUserInfo.kakao_account) {
               // 카카오 계정에서 전화번호 가져오기 (동의 필요)
-              phoneNumber = kakaoUserInfo.kakao_account.phone_number || '';
+              const rawPhoneNumber = kakaoUserInfo.kakao_account.phone_number || '';
+              phoneNumber = formatPhoneNumber(rawPhoneNumber); // 전화번호 형식 변환
               
               // 전화번호를 사용자 메타데이터에 저장
               if (phoneNumber) {
@@ -104,7 +128,8 @@ export async function GET(request: Request) {
             .from('profiles')
             .update({
               phone: phoneNumber,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
+              role:'client'
             })
             .eq('id', user.id);
             

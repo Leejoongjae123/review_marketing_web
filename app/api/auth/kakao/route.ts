@@ -7,7 +7,7 @@ export const runtime = 'edge';
 export async function GET(request: Request) {
   try {
     const requestUrl = new URL(request.url);
-    const redirectTo = requestUrl.searchParams.get('redirect_to') || 'client/reviews';
+    const redirectTo = requestUrl.searchParams.get('redirect_to') || 'client/notice';
     
     const supabase = await createClient();
     

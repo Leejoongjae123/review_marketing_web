@@ -26,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Plus, X, Eye } from "lucide-react";
+import { Plus, X, Eye, Upload } from "lucide-react";
 import Image from "next/image";
 import { toast } from "@/components/ui/use-toast";
 import { MultiProviderSelector, Provider } from "@/components/MultiProviderSelector";
@@ -40,6 +40,14 @@ interface Participant {
   eventAccount: string;
   nickname: string;
   reviewImage?: string;
+}
+
+// 구좌 타입 정의
+interface Quota {
+  id: number;
+  quotaNumber: number;
+  images: { file: File; preview: string; uploadedAt: string }[];
+  receipts: { file: File; preview: string; uploadedAt: string }[];
 }
 
 export default function AddReviewPage() {
@@ -60,6 +68,13 @@ export default function AddReviewPage() {
     content: "",
     rating: "3",
     productUrl: "",
+    storeName: "",
+    storeUrl: "",
+    reviewFee: "",
+    reservationAmount: "",
+    dailyCount: "",
+    searchKeyword: "",
+    purchaseCost: "",
   });
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -78,10 +93,31 @@ export default function AddReviewPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<Provider[]>([]);
   
+  // 구좌 관련 상태
+  const [quotaCount, setQuotaCount] = useState<string>("");
+  const [quotas, setQuotas] = useState<Quota[]>([]);
+  const quotaFileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  
   // 선택된 광고주 상태 변경 시 로그 출력
   useEffect(() => {
     console.log("선택된 광고주 목록:", selectedProviders);
   }, [selectedProviders]);
+
+  // 구좌 수 변경 시 테이블 생성
+  useEffect(() => {
+    const count = parseInt(quotaCount);
+    if (!isNaN(count) && count > 0) {
+      const newQuotas: Quota[] = Array.from({ length: count }, (_, index) => ({
+        id: index + 1,
+        quotaNumber: index + 1,
+        images: [],
+        receipts: []
+      }));
+      setQuotas(newQuotas);
+    } else {
+      setQuotas([]);
+    }
+  }, [quotaCount]);
 
   // 페이지 로드 시 스토리지 버킷 초기화 요청
   useEffect(() => {
@@ -101,6 +137,15 @@ export default function AddReviewPage() {
     initStorage();
   }, []);
 
+  // 플랫폼에 따른 필드 표시 여부 결정
+  const isReceiptReview = formData.platform === "영수증리뷰";
+  const isReservationReview = formData.platform === "예약자리뷰";
+  const isGoogle = formData.platform === "구글";
+  const isKakao = formData.platform === "카카오";
+  const isCoupang = formData.platform === "쿠팡";
+  const isStore = formData.platform === "스토어";
+  const isProductPlatform = isCoupang || isStore;
+
   const handleViewReview = (participant: Participant) => {
     setSelectedParticipant(participant);
     setIsModalOpen(true);
@@ -109,11 +154,37 @@ export default function AddReviewPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // 시작일과 종료일 필수 입력 검증
-    if (!formData.startDate || formData.startDate.trim() === '' || !formData.endDate || formData.endDate.trim() === '') {
+    // 플랫폼별 필수 입력 검증
+    const validationErrors = [];
+    
+    // 공통 필수 필드
+    if (!formData.platform) validationErrors.push("플랫폼");
+    if (!formData.startDate) validationErrors.push("시작일");
+    if (!formData.endDate) validationErrors.push("종료일");
+    if (!formData.title) validationErrors.push("타이틀");
+    if (!formData.reviewFee) validationErrors.push("리뷰비");
+    if (!formData.dailyCount) validationErrors.push("일건수");
+    
+    // 플랫폼별 필수 필드
+    if (isProductPlatform) {
+      if (!formData.productName) validationErrors.push("제품명");
+      if (!formData.searchKeyword) validationErrors.push("검색어");
+      if (!formData.productUrl) validationErrors.push("제품링크");
+      if (!formData.purchaseCost) validationErrors.push("구매비용");
+    } else {
+      if (!formData.storeName) validationErrors.push("상호명");
+      if (!formData.storeUrl) validationErrors.push("상호링크");
+    }
+    
+    // 예약자리뷰인 경우 예약금액 필수
+    if (isReservationReview && !formData.reservationAmount) {
+      validationErrors.push("예약금액");
+    }
+    
+    if (validationErrors.length > 0) {
       toast({
         title: "필수 정보 누락",
-        description: "시작일과 종료일은 필수 입력사항입니다.",
+        description: `다음 항목들은 필수 입력사항입니다: ${validationErrors.join(", ")}`,
         variant: "destructive",
       });
       return;
@@ -135,11 +206,53 @@ export default function AddReviewPage() {
       
       const imageFiles = await Promise.all(imageFilesPromises);
       
+      // 구좌 이미지들을 base64로 변환
+      const quotasWithBase64Files = await Promise.all(
+        quotas.map(async (quota) => {
+          const quotaImageFiles = await Promise.all(
+            quota.images.map(async (image) => {
+              return new Promise<{ base64: string; uploadedAt: string }>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  resolve({
+                    base64: reader.result as string,
+                    uploadedAt: image.uploadedAt
+                  });
+                };
+                reader.readAsDataURL(image.file);
+              });
+            })
+          );
+
+          const quotaReceiptFiles = await Promise.all(
+            quota.receipts.map(async (receipt) => {
+              return new Promise<{ base64: string; uploadedAt: string }>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  resolve({
+                    base64: reader.result as string,
+                    uploadedAt: receipt.uploadedAt
+                  });
+                };
+                reader.readAsDataURL(receipt.file);
+              });
+            })
+          );
+          
+          return {
+            quotaNumber: quota.quotaNumber,
+            images: quotaImageFiles,
+            receipts: quotaReceiptFiles
+          };
+        })
+      );
+      console.log('formData:',formData)
+
       // JSON 데이터 준비
       const requestData = {
         platform: formData.platform,
         productName: formData.productName,
-        optionName: formData.optionName,
+        storeName: formData.storeName,
         price: formData.price,
         shippingFee: formData.shippingFee,
         seller: formData.seller,
@@ -150,9 +263,19 @@ export default function AddReviewPage() {
         content: formData.content,
         rating: formData.rating,
         productUrl: formData.productUrl,
+        storeUrl: formData.storeUrl,
+        // DB 필드명에 맞춘 필드들
+        store_name: formData.storeName || formData.productName,
+        store_url: formData.storeUrl || formData.productUrl,
         imageFiles: imageFiles,
         participants_data: participants.length > 0 ? participants : undefined,
         providers_data: selectedProviders.length > 0 ? selectedProviders : undefined,
+        quotas_data: quotasWithBase64Files.length > 0 ? quotasWithBase64Files : undefined,
+        reviewFee: formData.reviewFee,
+        reservationAmount: formData.reservationAmount,
+        dailyCount: formData.dailyCount,
+        searchKeyword: formData.searchKeyword,
+        purchaseCost: formData.purchaseCost,
       };
       
       // API 호출
@@ -287,7 +410,51 @@ export default function AddReviewPage() {
   const handleRemoveParticipant = (id: number) => {
     setParticipants(participants.filter(p => p.id !== id));
   };
-  
+
+  // 구좌별 이미지 첨부 핸들러
+  const handleQuotaImageChange = (quotaId: number, type: 'images' | 'receipts', e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files).map(file => ({
+        file,
+        preview: URL.createObjectURL(file),
+        uploadedAt: new Date().toLocaleString('ko-KR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })
+      }));
+      
+      setQuotas(prev => prev.map(quota => 
+        quota.id === quotaId 
+          ? { ...quota, [type]: [...quota[type], ...newFiles] }
+          : quota
+      ));
+    }
+  };
+
+  // 구좌별 이미지/영수증 제거 핸들러
+  const handleRemoveQuotaFile = (quotaId: number, type: 'images' | 'receipts', fileIndex: number) => {
+    setQuotas(prev => prev.map(quota => {
+      if (quota.id === quotaId) {
+        const newFiles = [...quota[type]];
+        URL.revokeObjectURL(newFiles[fileIndex].preview);
+        newFiles.splice(fileIndex, 1);
+        return { ...quota, [type]: newFiles };
+      }
+      return quota;
+    }));
+  };
+
+  // 구좌별 파일 추가 버튼 핸들러
+  const handleAddQuotaFile = (quotaId: number, type: 'images' | 'receipts') => {
+    const inputRef = quotaFileInputRefs.current[`${quotaId}-${type}`];
+    if (inputRef) {
+      inputRef.click();
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -345,11 +512,12 @@ export default function AddReviewPage() {
                 <SelectValue placeholder="플랫폼 선택" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="네이버 영수증">네이버 영수증</SelectItem>
-                <SelectItem value="네이버 예약자">네이버 예약자</SelectItem>
-                <SelectItem value="카카오">카카오</SelectItem>
+                <SelectItem value="영수증리뷰">영수증리뷰</SelectItem>
+                <SelectItem value="예약자리뷰">예약자리뷰</SelectItem>
                 <SelectItem value="구글">구글</SelectItem>
+                <SelectItem value="카카오">카카오</SelectItem>
                 <SelectItem value="쿠팡">쿠팡</SelectItem>
+                <SelectItem value="스토어">스토어</SelectItem>
               </SelectContent>
             </Select>
             {!formData.platform && (
@@ -373,93 +541,180 @@ export default function AddReviewPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2 col-span-1">
+            <Label htmlFor="title">제목</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="타이틀을 입력하세요"
+              className={!formData.title ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
+            />
+            {!formData.title && (
+              <p className="text-red-500 text-sm mt-1">타이틀은 필수 입력사항입니다.</p>
+            )}
+          </div>
 
+          {/* 공통 필드: 상호명/제품명 */}
           <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="productName">제품명</Label>
+            <Label htmlFor={isProductPlatform ? "productName" : "storeName"}>
+              {isProductPlatform ? "제품명" : "상호명"}
+            </Label>
             <Input
-              id="productName"
-              value={formData.productName}
-              onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
-              placeholder="제품명을 입력하세요"
-              className={!formData.productName ? "border-red-300 focus:border-red-500" : ""}
+              id={isProductPlatform ? "productName" : "storeName"}
+              value={isProductPlatform ? formData.productName : formData.storeName}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                [isProductPlatform ? "productName" : "storeName"]: e.target.value 
+              }))}
+              placeholder={`${isProductPlatform ? "제품명" : "상호명"}을 입력하세요`}
+              className={!formData.productName && !formData.storeName ? "border-red-300 focus:border-red-500" : ""}
               aria-required="true"
             />
-            {!formData.productName && (
-              <p className="text-red-500 text-sm mt-1">제품명은 필수 입력사항입니다.</p>
+            {!formData.productName && !formData.storeName && (
+              <p className="text-red-500 text-sm mt-1">{isProductPlatform ? "제품명" : "상호명"}은 필수 입력사항입니다.</p>
             )}
           </div>
 
-          <div className="space-y-2 md:col-span-1">
-            <Label htmlFor="optionName">옵션명</Label>
-            <Input
-              id="optionName"
-              value={formData.optionName}
-              onChange={(e) => setFormData(prev => ({ ...prev, optionName: e.target.value }))}
-              placeholder="옵션명을 입력하세요"
-              className={!formData.optionName ? "border-red-300 focus:border-red-500" : ""}
-              aria-required="true"
-            />
-            {!formData.optionName && (
-              <p className="text-red-500 text-sm mt-1">옵션명은 필수 입력사항입니다.</p>
+          {/* 검색어 (쿠팡, 스토어만) */}
+          {isProductPlatform && (
+            <div className="space-y-2 md:col-span-1">
+              <Label htmlFor="searchKeyword">검색어</Label>
+              <Input
+                id="searchKeyword"
+                value={formData.searchKeyword}
+                onChange={(e) => setFormData(prev => ({ ...prev, searchKeyword: e.target.value }))}
+                placeholder="검색어를 입력하세요"
+                className={!formData.searchKeyword ? "border-red-300 focus:border-red-500" : ""}
+                aria-required="true"
+              />
+              {!formData.searchKeyword && (
+                <p className="text-red-500 text-sm mt-1">검색어는 필수 입력사항입니다.</p>
+              )}
+            </div>
+          )}
+
+          {/* 상호링크/제품링크 */}
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor={isProductPlatform ? "productUrl" : "storeUrl"}>
+              {isProductPlatform ? "제품링크" : "상호링크"}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id={isProductPlatform ? "productUrl" : "storeUrl"}
+                value={isProductPlatform ? formData.productUrl : formData.storeUrl}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  [isProductPlatform ? "productUrl" : "storeUrl"]: e.target.value 
+                }))}
+                placeholder={`${isProductPlatform ? "제품" : "상호"} URL을 입력하세요`}
+                className={!formData.productUrl && !formData.storeUrl ? "border-red-300 focus:border-red-500" : ""}
+                aria-required="true"
+              />
+              {(formData.productUrl || formData.storeUrl) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="whitespace-nowrap"
+                >
+                  <a
+                    href={isProductPlatform ? formData.productUrl : formData.storeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    링크 이동
+                  </a>
+                </Button>
+              )}
+            </div>
+            {!formData.productUrl && !formData.storeUrl && (
+              <p className="text-red-500 text-sm mt-1">{isProductPlatform ? "제품" : "상호"} URL은 필수 입력사항입니다.</p>
             )}
           </div>
 
-          <div className="space-y-2 col-span-2">
+          {/* 리뷰비 (모든 플랫폼) */}
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="reviewFee">리뷰비</Label>
+            <Input
+              id="reviewFee"
+              type="number"
+              value={formData.reviewFee}
+              onChange={(e) => setFormData(prev => ({ ...prev, reviewFee: e.target.value }))}
+              placeholder="리뷰비를 입력하세요"
+              className={!formData.reviewFee ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
+            />
+            {!formData.reviewFee && (
+              <p className="text-red-500 text-sm mt-1">리뷰비는 필수 입력사항입니다.</p>
+            )}
+          </div>
+
+          {/* 예약금액 (예약자리뷰만) */}
+          {isReservationReview && (
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="reservationAmount">예약금액</Label>
+              <Input
+                id="reservationAmount"
+                type="number"
+                value={formData.reservationAmount}
+                onChange={(e) => setFormData(prev => ({ ...prev, reservationAmount: e.target.value }))}
+                placeholder="예약금액을 입력하세요"
+                className={!formData.reservationAmount ? "border-red-300 focus:border-red-500" : ""}
+                aria-required="true"
+              />
+              {!formData.reservationAmount && (
+                <p className="text-red-500 text-sm mt-1">예약금액은 필수 입력사항입니다.</p>
+              )}
+            </div>
+          )}
+
+          {/* 구매비용 (쿠팡, 스토어만) */}
+          {isProductPlatform && (
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="purchaseCost">구매비용</Label>
+              <Input
+                id="purchaseCost"
+                type="number"
+                value={formData.purchaseCost}
+                onChange={(e) => setFormData(prev => ({ ...prev, purchaseCost: e.target.value }))}
+                placeholder="구매비용을 입력하세요"
+                className={!formData.purchaseCost ? "border-red-300 focus:border-red-500" : ""}
+                aria-required="true"
+              />
+              {!formData.purchaseCost && (
+                <p className="text-red-500 text-sm mt-1">구매비용은 필수 입력사항입니다.</p>
+              )}
+            </div>
+          )}
+
+          {/* 일건수 (모든 플랫폼) */}
+          <div className="space-y-2 col-span-2 md:col-span-1">
+            <Label htmlFor="dailyCount">일건수</Label>
+            <Input
+              id="dailyCount"
+              type="number"
+              value={formData.dailyCount}
+              onChange={(e) => setFormData(prev => ({ ...prev, dailyCount: e.target.value }))}
+              placeholder="일건수를 입력하세요"
+              className={!formData.dailyCount ? "border-red-300 focus:border-red-500" : ""}
+              aria-required="true"
+            />
+            {!formData.dailyCount && (
+              <p className="text-red-500 text-sm mt-1">일건수는 필수 입력사항입니다.</p>
+            )}
+          </div>
+
+          <div className="space-y-2 col-span-1">
             <Label>광고주</Label>
             <MultiProviderSelector 
               value={selectedProviders}
               onChange={setSelectedProviders}
-              
             />
             {selectedProviders.length === 0 && (
               <div className="border-red-300 focus:border-red-500"></div>
-            )}
-          </div>
-
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="price">가격</Label>
-            <Input
-              id="price"
-              type="number"
-              value={formData.price}
-              onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-              placeholder="가격을 입력하세요"
-              className={!formData.price ? "border-red-300 focus:border-red-500" : ""}
-              aria-required="true"
-            />
-            {!formData.price && (
-              <p className="text-red-500 text-sm mt-1">가격은 필수 입력사항입니다.</p>
-            )}
-          </div>
-
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="shippingFee">배송비</Label>
-            <Input
-              id="shippingFee"
-              type="number"
-              value={formData.shippingFee}
-              onChange={(e) => setFormData(prev => ({ ...prev, shippingFee: e.target.value }))}
-              placeholder="배송비를 입력하세요"
-              className={!formData.shippingFee ? "border-red-300 focus:border-red-500" : ""}
-              aria-required="true"
-            />
-            {!formData.shippingFee && (
-              <p className="text-red-500 text-sm mt-1">배송비는 필수 입력사항입니다.</p>
-            )}
-          </div>
-
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="seller">판매자</Label>
-            <Input
-              id="seller"
-              value={formData.seller}
-              onChange={(e) => setFormData(prev => ({ ...prev, seller: e.target.value }))}
-              placeholder="판매자를 입력하세요"
-              className={!formData.seller ? "border-red-300 focus:border-red-500" : ""}
-              aria-required="true"
-            />
-            {!formData.seller && (
-              <p className="text-red-500 text-sm mt-1">판매자는 필수 입력사항입니다.</p>
             )}
           </div>
 
@@ -495,87 +750,192 @@ export default function AddReviewPage() {
             )}
           </div>
 
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="title">제목</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="제목을 입력하세요"
-              className={!formData.title ? "border-red-300 focus:border-red-500" : ""}
-              aria-required="true"
-            />
-            {!formData.title && (
-              <p className="text-red-500 text-sm mt-1">제목은 필수 입력사항입니다.</p>
-            )}
-          </div>
 
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="content">내용</Label>
-            <Input
-              id="content"
-              value={formData.content}
-              onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-              placeholder="내용을 입력하세요"
-              className={!formData.content ? "border-red-300 focus:border-red-500" : ""}
-              aria-required="true"
-            />
-            {!formData.content && (
-              <p className="text-red-500 text-sm mt-1">내용은 필수 입력사항입니다.</p>
-            )}
-          </div>
+        </div>
 
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="rating">평점</Label>
-            <Input
-              id="rating"
-              type="number"
-              min="1"
-              max="5"
-              value={formData.rating}
-              onChange={(e) => setFormData(prev => ({ ...prev, rating: e.target.value }))}
-              placeholder="평점을 입력하세요 (1-5)"
-              className={!formData.rating ? "border-red-300 focus:border-red-500" : ""}
-              aria-required="true"
-            />
-            {!formData.rating && (
-              <p className="text-red-500 text-sm mt-1">평점은 필수 입력사항입니다.</p>
-            )}
-          </div>
-
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="productUrl">상품 URL</Label>
-            <div className="flex items-center gap-2">
+        {/* 구좌 관리 섹션 */}
+        <Separator />
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">구좌 관리</h2>
+          
+          <div className="space-y-2">
+            <Label htmlFor="quotaCount">작성 가능한 구좌 수</Label>
+            <div className="flex items-center gap-4">
               <Input
-                id="productUrl"
-                value={formData.productUrl}
-                onChange={(e) => setFormData(prev => ({ ...prev, productUrl: e.target.value }))}
-                placeholder="상품 URL을 입력하세요"
-                className={!formData.productUrl ? "border-red-300 focus:border-red-500" : ""}
-                aria-required="true"
+                id="quotaCount"
+                type="number"
+                min="0"
+                max="100"
+                value={quotaCount}
+                onChange={(e) => setQuotaCount(e.target.value)}
+                placeholder="구좌 수를 입력하세요"
+                className="w-48"
               />
-              {formData.productUrl && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="whitespace-nowrap"
-                >
-                  <a
-                    href={formData.productUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    링크 이동
-                  </a>
-                </Button>
-              )}
+              <span className="text-sm text-muted-foreground">
+                {quotas.length > 0 && `${quotas.length}개의 구좌가 생성되었습니다.`}
+              </span>
             </div>
-            {!formData.productUrl && (
-              <p className="text-red-500 text-sm mt-1">상품 URL은 필수 입력사항입니다.</p>
-            )}
           </div>
+
+          {quotas.length > 0 && (
+            <div className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-20 text-center">구좌번호</TableHead>
+                    <TableHead className="text-center">이미지</TableHead>
+                    <TableHead className="text-center">영수증</TableHead>
+                    <TableHead className="text-center">작성일시</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {quotas.map((quota) => (
+                    <TableRow key={quota.id}>
+                      {/* 구좌번호 */}
+                      <TableCell className="text-center font-medium border-r">
+                        {quota.quotaNumber}
+                      </TableCell>
+                      
+                      {/* 이미지 셀 */}
+                      <TableCell className="border-r">
+                        <div 
+                          className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 hover:border-primary transition-colors cursor-pointer flex flex-col items-center justify-center"
+                          onClick={() => handleAddQuotaFile(quota.id, 'images')}
+                        >
+                          <input
+                            type="file"
+                            ref={(el) => {
+                              quotaFileInputRefs.current[`${quota.id}-images`] = el;
+                            }}
+                            className="hidden"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => handleQuotaImageChange(quota.id, 'images', e)}
+                          />
+                          
+                          {quota.images.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 justify-center w-full">
+                              {quota.images.map((image, imageIndex) => (
+                                <div key={imageIndex} className="relative group">
+                                  <div className="w-12 h-12 relative rounded-lg overflow-hidden border">
+                                    <Image
+                                      src={image.preview}
+                                      alt={`구좌 ${quota.quotaNumber} 이미지 ${imageIndex + 1}`}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveQuotaFile(quota.id, 'images', imageIndex);
+                                    }}
+                                    className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                  >
+                                    <X className="h-2 w-2" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <Plus className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                              <span className="text-xs text-gray-500">이미지 첨부</span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      
+                      {/* 영수증 셀 */}
+                      <TableCell className="border-r">
+                        <div 
+                          className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 hover:border-primary transition-colors cursor-pointer flex flex-col items-center justify-center"
+                          onClick={() => handleAddQuotaFile(quota.id, 'receipts')}
+                        >
+                          <input
+                            type="file"
+                            ref={(el) => {
+                              quotaFileInputRefs.current[`${quota.id}-receipts`] = el;
+                            }}
+                            className="hidden"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => handleQuotaImageChange(quota.id, 'receipts', e)}
+                          />
+                          
+                          {quota.receipts.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 justify-center w-full">
+                              {quota.receipts.map((receipt, receiptIndex) => (
+                                <div key={receiptIndex} className="relative group">
+                                  <div className="w-12 h-12 relative rounded-lg overflow-hidden border">
+                                    <Image
+                                      src={receipt.preview}
+                                      alt={`구좌 ${quota.quotaNumber} 영수증 ${receiptIndex + 1}`}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveQuotaFile(quota.id, 'receipts', receiptIndex);
+                                    }}
+                                    className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                  >
+                                    <X className="h-2 w-2" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <Plus className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                              <span className="text-xs text-gray-500">영수증 첨부</span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      
+                      {/* 작성일시 셀 */}
+                      <TableCell className="text-center">
+                        <div className="space-y-2">
+                          {/* 이미지 작성일시 */}
+                          {quota.images.length > 0 && (
+                            <div>
+                              <div className="text-xs font-medium text-blue-600 mb-1">이미지</div>
+                              {quota.images.map((image, imageIndex) => (
+                                <div key={imageIndex} className="text-xs text-gray-600 mb-1">
+                                  {image.uploadedAt}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* 영수증 작성일시 */}
+                          {quota.receipts.length > 0 && (
+                            <div>
+                              <div className="text-xs font-medium text-green-600 mb-1">영수증</div>
+                              {quota.receipts.map((receipt, receiptIndex) => (
+                                <div key={receiptIndex} className="text-xs text-gray-600 mb-1">
+                                  {receipt.uploadedAt}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {quota.images.length === 0 && quota.receipts.length === 0 && (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-4">

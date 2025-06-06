@@ -50,7 +50,7 @@ export default function LoginForm() {
         description: "관리자 리뷰 페이지로 이동합니다.",
       });
       
-      router.push("/admin/reviews");
+      router.push("/admin/notice");
       router.refresh();
     } catch (error) {
       console.error("로그인 오류:", error);

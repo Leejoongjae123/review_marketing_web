@@ -2,6 +2,29 @@ import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import axios from 'axios';
 
+// 전화번호를 한국 형식으로 변환하는 함수
+function formatPhoneNumber(phoneNumber: string): string {
+  if (!phoneNumber) return '';
+  
+  // +82로 시작하는 경우 제거하고 0으로 시작하도록 변환
+  let cleanNumber = phoneNumber.replace(/\D/g, ''); // 숫자만 추출
+  
+  if (cleanNumber.startsWith('82')) {
+    cleanNumber = '0' + cleanNumber.substring(2);
+  }
+  
+  // 11자리 숫자인 경우 010-XXXX-XXXX 형식으로 변환
+  if (cleanNumber.length === 11 && cleanNumber.startsWith('010')) {
+    const first = cleanNumber.slice(0, 3);
+    const middle = cleanNumber.slice(3, 7);
+    const last = cleanNumber.slice(7, 11);
+    return `${first}-${middle}-${last}`;
+  }
+  
+  // 다른 형식인 경우 원본 반환 (하이픈 제거된 숫자만)
+  return cleanNumber;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -41,7 +64,8 @@ export async function GET(request: Request) {
     console.log("userRes", userRes.data)
 
     const kakao_account = userRes.data.kakao_account;
-    const phone = kakao_account.phone_number;
+    const rawPhone = kakao_account.phone_number;
+    const phone = formatPhoneNumber(rawPhone); // 전화번호 형식 변환
     const email = kakao_account.email || `${userRes.data.id}@kakao.user`;
     const kakao_id = userRes.data.id;
     const profile = kakao_account.profile || {};

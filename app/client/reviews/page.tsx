@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight, Download, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Download, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -47,8 +47,16 @@ interface Review {
   end_date: string;
   period?: string;
   product_url?: string;
+  store_url?: string;
+  store_name?: string;
   created_at: string;
   updated_at?: string;
+  slots?: any[]; // 구좌 정보 배열
+  daily_count: number;
+  review_fee: number;
+  reservation_amount?: number;
+  purchase_cost?: number;
+  search_keyword?: string;
 }
 
 export default function ClientReviewsPage() {
@@ -58,15 +66,27 @@ export default function ClientReviewsPage() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [pageSize, setPageSize] = useState(10);
+  const [platformFilter, setPlatformFilter] = useState("전체");
   const [reviews, setReviews] = useState<Review[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedReviews, setSelectedReviews] = useState<Set<string | number>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reviewToDelete, setReviewToDelete] = useState<string | number | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
+  // 플랫폼 필터 옵션 정의
+  const platformOptions = [
+    { label: "전체", value: "전체" },
+    { label: "영수증리뷰", value: "영수증리뷰" },
+    { label: "예약자리뷰", value: "예약자리뷰" },
+    { label: "구글", value: "구글" },
+    { label: "카카오", value: "카카오" },
+    { label: "쿠팡", value: "쿠팡" },
+    { label: "스토어", value: "스토어" }
+  ];
 
   const getUser = async () => {
     const { data, error } = await supabase.auth.getUser();
@@ -76,12 +96,20 @@ export default function ClientReviewsPage() {
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/reviews?searchCategory=${searchCategory}&searchTerm=${encodeURIComponent(searchTerm)}&startDate=${startDate}&endDate=${endDate}&page=${currentPage}&pageSize=${pageSize}`
-      );
+      const params = new URLSearchParams({
+        searchCategory,
+        searchTerm,
+        startDate,
+        endDate,
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        platformFilter: platformFilter === "전체" ? "" : platformFilter
+      });
+
+      const response = await fetch(`/api/reviews?${params}`);
       
       if (!response.ok) {
-        throw new Error('데이터를 불러오는데 실패했습니다');
+        console.log('데이터를 불러오는데 실패했습니다');
       }
       
       const data = await response.json();
@@ -97,13 +125,42 @@ export default function ClientReviewsPage() {
 
   useEffect(() => {
     getUser();
+  }, []);
+
+  useEffect(() => {
     fetchReviews();
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, platformFilter]);
+
+  // 페이지 진입 시나 포커스가 돌아올 때 데이터 리로드
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchReviews();
+    };
+
+    // 페이지가 로드될 때 데이터 로드
+    fetchReviews();
+    
+    // 브라우저 창이 포커스를 다시 얻었을 때 데이터 리로드
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const handleSearch = () => {
     setCurrentPage(1);
     fetchReviews();
   };
+
+  const handlePlatformFilter = (platform: string) => {
+    setPlatformFilter(platform);
+    setCurrentPage(1);
+    // 플랫폼 필터가 변경되면 자동으로 useEffect에 의해 fetchReviews가 호출됩니다
+  };
+
+  // 페이지네이션 계산
+  const startIndex = (currentPage - 1) * pageSize;
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -127,6 +184,25 @@ export default function ClientReviewsPage() {
     }
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = reviews.map(review => review.id);
+      setSelectedReviews(new Set(allIds));
+    } else {
+      setSelectedReviews(new Set());
+    }
+  };
+
+  const handleSelectReview = (reviewId: string | number, checked: boolean) => {
+    const newSelected = new Set(selectedReviews);
+    if (checked) {
+      newSelected.add(reviewId);
+    } else {
+      newSelected.delete(reviewId);
+    }
+    setSelectedReviews(newSelected);
+  };
+
   const handleExcelDownload = () => {
     // 엑셀 다운로드 로직 구현
     console.log('엑셀 다운로드');
@@ -137,12 +213,27 @@ export default function ClientReviewsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (reviewToDelete) {
-      // TODO: API 연동
-      console.log('리뷰 삭제:', reviewToDelete);
-      setDeleteDialogOpen(false);
-      setReviewToDelete(null);
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/reviews/${reviewToDelete}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          console.log('삭제에 실패했습니다');
+        }
+        
+        // 삭제 후 리스트 새로고침
+        await fetchReviews();
+        setDeleteDialogOpen(false);
+        setReviewToDelete(null);
+      } catch (error) {
+        console.error('리뷰 삭제 중 오류 발생:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -155,128 +246,160 @@ export default function ClientReviewsPage() {
       <h1 className="text-2xl font-bold tracking-tight">리뷰 목록</h1>
       <p className="text-muted-foreground">참여 가능한 리뷰 및 내가 작성한 리뷰를 확인합니다.</p>
       
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex-1 flex gap-2">
-          <Select value={searchCategory} onValueChange={setSearchCategory}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="검색 카테고리" />
+      <div className="flex md:flex-row flex-col justify-between items-center gap-4 mb-4 w-full">
+        {/* 플랫폼 필터 버튼들 */}
+        <div className="flex gap-2 flex-wrap w-full">
+          {platformOptions.map((option) => (
+            <Button
+              key={option.value}
+              variant={platformFilter === option.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => handlePlatformFilter(option.value)}
+              className="h-8"
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* 오른쪽 컨트롤들 */}
+        <div className="flex gap-2 w-full md:justify-end">
+          <Select value={pageSize.toString()} onValueChange={(value) => {
+            setPageSize(Number(value));
+            setCurrentPage(1);
+            fetchReviews();
+          }}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="페이지 크기" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="platform">플랫폼</SelectItem>
+              <SelectItem value="10">10개</SelectItem>
+              <SelectItem value="50">50개</SelectItem>
+              <SelectItem value="100">100개</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button className="w-full md:w-auto" variant="outline" onClick={handleExcelDownload}>
+            <Download className="h-4 w-4 mr-2" />
+            엑셀 다운로드
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex gap-2 flex-1">
+          <Select value={searchCategory} onValueChange={setSearchCategory}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="검색 범위" />
+            </SelectTrigger>
+            <SelectContent>
               <SelectItem value="product_name">제품명</SelectItem>
-              <SelectItem value="seller">판매자</SelectItem>
+              <SelectItem value="store_name">상호명</SelectItem>
+              <SelectItem value="platform">플랫폼</SelectItem>
+              <SelectItem value="search_keyword">검색어</SelectItem>
             </SelectContent>
           </Select>
           <Input
             placeholder="검색어를 입력하세요"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
+            className="flex-1"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleSearch();
+              }
+            }}
           />
         </div>
-        <div className="flex gap-2">
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full"
-            placeholder="시작일"
-          />
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full"
-            placeholder="종료일"
-          />
-        </div>
+        
         <Button onClick={handleSearch}>
           <Search className="h-4 w-4 mr-2" />
           검색
         </Button>
       </div>
-      
-      <div className="flex justify-end gap-2 mb-4">
-        <Select value={pageSize.toString()} onValueChange={(value) => {
-          setPageSize(Number(value));
-          setCurrentPage(1);
-          fetchReviews();
-        }}>
-          <SelectTrigger className="w-32">
-            <SelectValue placeholder="페이지 크기" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="10">10개</SelectItem>
-            <SelectItem value="50">50개</SelectItem>
-            <SelectItem value="100">100개</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
+
       {loading ? (
         <div className="flex justify-center items-center h-40">
-          <p>데이터를 불러오는 중...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
         <div className="rounded-md border overflow-x-auto">
-          <table className="w-full min-w-[1400px]">
+          <table className="w-full min-w-[1200px]">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="h-12 px-4 text-center align-middle font-medium">번호</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">플랫폼</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">이미지</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">제품명</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">옵션명</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">가격</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">배송비</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">판매자</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">시작일</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">종료일</th>
-                <th className="h-12 px-4 text-center align-middle font-medium">URL</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">
+                  {platformFilter === "쿠팡" || platformFilter === "스토어" ? "제품명" : "상호명"}
+                </th>
+                {(platformFilter === "쿠팡" || platformFilter === "스토어") && (
+                  <th className="h-12 px-4 text-center align-middle font-medium w-24">검색어</th>
+                )}
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">
+                  {platformFilter === "쿠팡" || platformFilter === "스토어" ? "제품링크" : "상호링크"}
+                </th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">일건수</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">구좌수</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">작성기간</th>
               </tr>
             </thead>
             <tbody>
-              {reviews.map((review, index) => (
-                <tr 
-                  key={review.id} 
-                  className="border-b hover:bg-muted/50 cursor-pointer"
-                  onClick={() => handleRowClick(review.id)}
-                >
-                  <td className="p-4 text-center">{((currentPage - 1) * pageSize) + index + 1}</td>
-                  <td className="p-4 text-center">{review.platform}</td>
-                  <td className="p-4 text-center">
-                    {review.image_url && (
-                      <img 
-                        src={review.image_url} 
-                        alt={review.product_name} 
-                        className="w-16 h-16 object-cover mx-auto rounded-md"
-                      />
+              {reviews.map((review, index) => {
+                const isProductPlatform = review.platform === "쿠팡" || review.platform === "스토어";
+                const displayName = isProductPlatform ? review.product_name : review.store_name;
+                const displayUrl = isProductPlatform ? review.product_url : review.store_url;
+                
+                return (
+                  <tr key={review.id} className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => handleRowClick(review.id)}>
+                    <td className="p-4 text-center">{startIndex + index + 1}</td>
+                    <td className="p-4 text-center">{review.platform}</td>
+                    <td className="p-4 text-center">
+                      {review.image_url ? (
+                        <img 
+                          src={review.image_url} 
+                          alt={displayName} 
+                          className="w-16 h-16 object-cover mx-auto rounded-md"
+                        />
+                      ) : (
+                        <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
+                      )}
+                    </td>
+                    <td className="p-4 text-center">{displayName}</td>
+                    {(platformFilter === "쿠팡" || platformFilter === "스토어") && (
+                      <td className="p-4 text-center">{review.search_keyword || '-'}</td>
                     )}
-                  </td>
-                  <td className="p-4 text-center">{review.product_name}</td>
-                  <td className="p-4 text-center">{review.option_name}</td>
-                  <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
-                  <td className="p-4 text-center">{review.shipping_fee?.toLocaleString() ?? '0'}원</td>
-                  <td className="p-4 text-center">{review.seller}</td>
-                  <td className="p-4 text-center">{review.start_date ? new Date(review.start_date).toLocaleDateString() : '-'}</td>
-                  <td className="p-4 text-center">{review.end_date ? new Date(review.end_date).toLocaleDateString() : '-'}</td>
-                  <td className="p-4 text-center">
-                    {review.product_url && (
-                      <a 
-                        href={review.product_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:text-blue-700 underline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        링크
-                      </a>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    <td className="p-4 text-center">
+                      {displayUrl ? (
+                        <a 
+                          href={displayUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          링크
+                        </a>
+                      ) : '-'}
+                    </td>
+                    <td className="p-4 text-center">{review.daily_count || '-'}</td>
+                    <td className="p-4 text-center">
+                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                        review?.daily_count 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {review.slots ? review.slots.length : 0}
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      {review.start_date && review.end_date ? 
+                        `${new Date(review.start_date).toLocaleDateString()} - ${new Date(review.end_date).toLocaleDateString()}` : 
+                        review.period || '-'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

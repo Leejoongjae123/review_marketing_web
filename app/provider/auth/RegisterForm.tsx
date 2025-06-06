@@ -33,16 +33,19 @@ export default function RegisterForm({ onSuccess }: { onSuccess?: () => void }) 
     staffName.length > 0 &&
     phone.length > 0;
 
-  // 번호를 +82 10-9070-3001 형태로 변환하는 함수
-  function formatPhoneToInternational(input: string): string {
-    const numbers = input.replace(/\D/g, "");
-    if (numbers.length < 10) return input; // 10자리 미만이면 변환 안함
-    let local = numbers;
-    if (local.startsWith("0")) local = local.slice(1); // 0 제거
-    const first = local.slice(0, 2); // 10
-    const middle = local.slice(2, 6); // 9070
-    const last = local.slice(6, 10); // 3001
-    return `+82 ${first}-${middle}-${last}`;
+  // 번호를 010-XXXX-XXXX 형태로 변환하는 함수
+  function formatPhoneNumber(input: string): string {
+    const numbers = input.replace(/\D/g, ""); // 숫자만 추출
+
+    // 010으로 시작하는 11자리 숫자인 경우 010-XXXX-XXXX 형식으로 변환
+    if (numbers.length === 11 && numbers.startsWith("010")) {
+      const first = numbers.slice(0, 3);
+      const middle = numbers.slice(3, 7);
+      const last = numbers.slice(7, 11);
+      return `${first}-${middle}-${last}`;
+    }
+    // 그 외의 경우는 원본 입력 반환 (예: 10자리 미만, 010으로 시작하지 않는 번호 등)
+    return input;
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -62,7 +65,7 @@ export default function RegisterForm({ onSuccess }: { onSuccess?: () => void }) 
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyName, staffName, email, password, fullName: staffName, phone: formatPhoneToInternational(phone) }),
+      body: JSON.stringify({ companyName, staffName, email, password, fullName: staffName, phone: formatPhoneNumber(phone) }),
     });
     const data = await res.json();
     if (res.ok) {
@@ -105,7 +108,7 @@ export default function RegisterForm({ onSuccess }: { onSuccess?: () => void }) 
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">연락처</Label>
-            <Input id="phone" name="phone" placeholder="연락처 입력" required value={phone} onChange={e => setPhone(formatPhoneToInternational(e.target.value))} />
+            <Input id="phone" name="phone" placeholder="연락처 입력" required value={phone} onChange={e => setPhone(formatPhoneNumber(e.target.value))} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">이메일</Label>

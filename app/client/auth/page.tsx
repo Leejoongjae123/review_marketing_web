@@ -19,7 +19,7 @@ function AuthContent() {
   // 메시지 파라미터가 변경되면 토스트를 표시하기 위한 상태
   const [messageParam, setMessageParam] = React.useState<string | null>(null);
   // redirect_to 파라미터를 저장하기 위한 상태
-  const [redirectTo, setRedirectTo] = React.useState<string | null>('client/reviews');
+  const [redirectTo, setRedirectTo] = React.useState<string | null>('client/notice');
   
   React.useEffect(() => {
     // 에러 처리
@@ -58,7 +58,7 @@ function AuthContent() {
 
   const handleKakaoLogin = () => {
     setIsLoading(true);
-    window.location.href = `/api/auth/kakao?redirect_to=${encodeURIComponent(redirectTo || 'client/reviews')}`;
+    window.location.href = `/api/auth/kakao?redirect_to=${encodeURIComponent(redirectTo || 'client/notice')}`;
   };
 
   const showTestToast = () => {

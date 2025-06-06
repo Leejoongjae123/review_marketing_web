@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   const searchTerm = url.searchParams.get("searchTerm") || "";
   const startDate = url.searchParams.get("startDate") || "";
   const endDate = url.searchParams.get("endDate") || "";
+  const platformFilter = url.searchParams.get("platformFilter") || "";
   const page = parseInt(url.searchParams.get("page") || "1");
   const pageSize = parseInt(url.searchParams.get("pageSize") || "10");
   
@@ -25,6 +26,11 @@ export async function GET(request: NextRequest) {
   // 검색 조건 적용
   if (searchTerm && searchCategory) {
     query = query.ilike(searchCategory, `%${searchTerm}%`);
+  }
+
+  // 플랫폼 필터링 적용
+  if (platformFilter) {
+    query = query.eq("platform", platformFilter);
   }
   
   // 날짜 필터링 적용
@@ -51,12 +57,29 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+
+  // 각 리뷰에 대해 구좌 정보 추가
+  const reviewsWithSlots = await Promise.all(
+    reviews.map(async (review) => {
+      // 구좌 정보 가져오기
+      const { data: slotsData, error: slotsError } = await supabase
+        .from("slots")
+        .select("*")
+        .eq("review_id", review.id)
+        .order("slot_number", { ascending: true });
+
+      return {
+        ...review,
+        slots: slotsData || []
+      };
+    })
+  );
   
   // 총 페이지 수 계산
   const totalPages = Math.ceil((count || 0) / pageSize);
   
   return NextResponse.json({
-    reviews,
+    reviews: reviewsWithSlots,
     totalCount: count || 0,
     totalPages,
     currentPage: page,
