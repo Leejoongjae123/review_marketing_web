@@ -483,7 +483,7 @@ export default function SlotManagementDialog({
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">이름 *</Label>
+                    <Label htmlFor="name">이름 <span className="text-red-500">*</span></Label>
                     <Input
                       id="name"
                       value={userSubmission.name}
@@ -497,7 +497,7 @@ export default function SlotManagementDialog({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">전화번호 *</Label>
+                    <Label htmlFor="phone">전화번호 <span className="text-red-500">*</span></Label>
                     <Input
                       id="phone"
                       value={userSubmission.phone}
@@ -511,7 +511,7 @@ export default function SlotManagementDialog({
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="nickname">닉네임 *</Label>
+                    <Label htmlFor="nickname">닉네임 <span className="text-red-500">*</span></Label>
                     <Input
                       id="nickname"
                       value={userSubmission.nickname}
@@ -529,7 +529,7 @@ export default function SlotManagementDialog({
 
                 {/* 리뷰 이미지 관리 */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">리뷰 이미지 *</h3>
+                  <h3 className="text-lg font-semibold mb-3">리뷰 이미지 <span className="text-sm font-normal underline">닉네임이 보이게 또렷하게 첨부 해 주세요</span></h3>
                   <div className="space-y-4">
                     <div>
                       <input

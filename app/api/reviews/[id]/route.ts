@@ -170,6 +170,7 @@ export async function PUT(
       daily_count: daily_count,
       search_keyword: requestData.search_keyword,
       purchase_cost: purchase_cost,
+      guide: requestData.review_guide,
       updated_at: new Date().toISOString()
     };
     

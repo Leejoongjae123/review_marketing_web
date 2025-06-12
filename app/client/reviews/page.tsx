@@ -62,7 +62,6 @@ interface Review {
 export default function ClientReviewsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchCategory, setSearchCategory] = useState("product_name");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [pageSize, setPageSize] = useState(10);
@@ -97,7 +96,6 @@ export default function ClientReviewsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        searchCategory,
         searchTerm,
         startDate,
         endDate,
@@ -156,7 +154,6 @@ export default function ClientReviewsPage() {
   const handlePlatformFilter = (platform: string) => {
     setPlatformFilter(platform);
     setCurrentPage(1);
-    // 플랫폼 필터가 변경되면 자동으로 useEffect에 의해 fetchReviews가 호출됩니다
   };
 
   // 페이지네이션 계산
@@ -222,7 +219,7 @@ export default function ClientReviewsPage() {
         });
         
         if (!response.ok) {
-          console.log('삭제에 실패했습니다');
+          return;
         }
         
         // 삭제 후 리스트 새로고침
@@ -246,9 +243,9 @@ export default function ClientReviewsPage() {
       <h1 className="text-2xl font-bold tracking-tight">리뷰 목록</h1>
       <p className="text-muted-foreground">참여 가능한 리뷰 및 내가 작성한 리뷰를 확인합니다.</p>
       
-      <div className="flex md:flex-row flex-col justify-between items-center gap-4 mb-4 w-full">
+      <div className="flex justify-between items-center gap-4 mb-4">
         {/* 플랫폼 필터 버튼들 */}
-        <div className="flex gap-2 flex-wrap w-full">
+        <div className="flex gap-2 flex-wrap">
           {platformOptions.map((option) => (
             <Button
               key={option.value}
@@ -263,7 +260,7 @@ export default function ClientReviewsPage() {
         </div>
 
         {/* 오른쪽 컨트롤들 */}
-        <div className="flex gap-2 w-full md:justify-end">
+        <div className="flex gap-2">
           <Select value={pageSize.toString()} onValueChange={(value) => {
             setPageSize(Number(value));
             setCurrentPage(1);
@@ -278,36 +275,20 @@ export default function ClientReviewsPage() {
               <SelectItem value="100">100개</SelectItem>
             </SelectContent>
           </Select>
-          <Button className="w-full md:w-auto" variant="outline" onClick={handleExcelDownload}>
+          {/* <Button variant="outline" onClick={handleExcelDownload}>
             <Download className="h-4 w-4 mr-2" />
             엑셀 다운로드
-          </Button>
+          </Button> */}
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex gap-2 flex-1">
-          <Select value={searchCategory} onValueChange={setSearchCategory}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="검색 범위" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="product_name">제품명</SelectItem>
-              <SelectItem value="store_name">상호명</SelectItem>
-              <SelectItem value="platform">플랫폼</SelectItem>
-              <SelectItem value="search_keyword">검색어</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex-1">
           <Input
-            placeholder="검색어를 입력하세요"
+            placeholder="상호명 또는 제목으로 검색하세요"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleSearch();
-              }
-            }}
+            className="w-full"
           />
         </div>
         
@@ -329,6 +310,7 @@ export default function ClientReviewsPage() {
                 <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">제목</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-32">
                   {platformFilter === "쿠팡" || platformFilter === "스토어" ? "제품명" : "상호명"}
                 </th>
@@ -346,9 +328,6 @@ export default function ClientReviewsPage() {
             <tbody>
               {reviews.map((review, index) => {
                 const isProductPlatform = review.platform === "쿠팡" || review.platform === "스토어";
-                const displayName = isProductPlatform ? review.product_name : review.store_name;
-                const displayUrl = isProductPlatform ? review.product_url : review.store_url;
-                
                 return (
                   <tr key={review.id} className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
                       onClick={() => handleRowClick(review.id)}>
@@ -358,29 +337,39 @@ export default function ClientReviewsPage() {
                       {review.image_url ? (
                         <img 
                           src={review.image_url} 
-                          alt={displayName} 
+                          alt={isProductPlatform ? review.product_name : review.store_name || review.product_name} 
                           className="w-16 h-16 object-cover mx-auto rounded-md"
                         />
                       ) : (
                         <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
                       )}
                     </td>
-                    <td className="p-4 text-center">{displayName}</td>
+                    <td className="p-4 text-center">
+                      <div className="max-w-32 truncate" title={review.title}>
+                        {review.title || '-'}
+                      </div>
+                    </td>
+                    <td className="p-4 text-center">
+                      {isProductPlatform ? review.product_name : (review.store_name || review.product_name)}
+                    </td>
                     {(platformFilter === "쿠팡" || platformFilter === "스토어") && (
-                      <td className="p-4 text-center">{review.search_keyword || '-'}</td>
+                      <td className="p-4 text-center">{review.search_keyword || review.option_name || '-'}</td>
                     )}
                     <td className="p-4 text-center">
-                      {displayUrl ? (
-                        <a 
-                          href={displayUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          링크
-                        </a>
-                      ) : '-'}
+                      {(() => {
+                        const url = isProductPlatform ? review.product_url : review.store_url;
+                        return url ? (
+                          <a 
+                            href={url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            링크
+                          </a>
+                        ) : '-';
+                      })()}
                     </td>
                     <td className="p-4 text-center">{review.daily_count || '-'}</td>
                     <td className="p-4 text-center">

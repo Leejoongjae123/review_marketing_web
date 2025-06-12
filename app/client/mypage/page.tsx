@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import PrivacyTermsModal from "./components/PrivacyTermsModal";
 
 // 사용자 정보 타입 정의
 interface UserInfo {
@@ -60,6 +61,7 @@ interface SlotSubmissionActivity {
   review_rating: number;
   review_price: number;
   review_status: string;
+  payment_status: string;
   slot_number: number;
   review_fee: number;
 }
@@ -254,6 +256,7 @@ export default function MypagePage() {
         review_rating: item.reviews.rating,
         review_price: item.reviews.price,
         review_status: item.reviews.status,
+        payment_status: item.payment_status || 'pending',
         slot_number: item.slots.slot_number,
         review_fee: item.reviews.review_fee || 0
       }));
@@ -366,14 +369,28 @@ export default function MypagePage() {
     }
   };
 
-  const getApprovalStyle = (approval: boolean) => {
-    return approval 
-      ? "bg-green-500 text-white px-2 py-1 rounded-md"
-      : "bg-yellow-500 text-white px-2 py-1 rounded-md";
+  const getPaymentStatusStyle = (payment_status: string) => {
+    switch (payment_status) {
+      case "completed":
+        return "bg-green-500 text-white px-2 py-1 rounded-md";
+      case "failed":
+        return "bg-red-500 text-white px-2 py-1 rounded-md";
+      case "pending":
+      default:
+        return "bg-yellow-500 text-white px-2 py-1 rounded-md";
+    }
   };
 
-  const getApprovalText = (approval: boolean) => {
-    return approval ? "승인됨" : "대기중";
+  const getPaymentStatusText = (payment_status: string) => {
+    switch (payment_status) {
+      case "completed":
+        return "입금완료";
+      case "failed":
+        return "입금불가";
+      case "pending":
+      default:
+        return "대기중";
+    }
   };
 
   const getStatusStyle = (status: string) => {
@@ -456,7 +473,10 @@ export default function MypagePage() {
             
             {/* 주민등록번호 */}
             <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="ssn_first_part">주민등록번호</Label>
+              <div className="flex items-center">
+                <Label htmlFor="ssn_first_part">주민등록번호</Label>
+                <PrivacyTermsModal />
+              </div>
               <div className="flex items-center gap-2">
                 <Input
                   id="ssn_first_part"
@@ -551,7 +571,7 @@ export default function MypagePage() {
                     <th className="h-12 px-4 text-center align-middle font-medium">플랫폼</th>
                     <th className="h-12 px-4 text-center align-middle font-medium">닉네임</th>
                     <th className="h-12 px-4 text-center align-middle font-medium">리뷰비</th>
-                    <th className="h-12 px-4 text-center align-middle font-medium">승인 상태</th>
+                    <th className="h-12 px-4 text-center align-middle font-medium">결제 상태</th>
                     <th className="h-12 px-4 text-center align-middle font-medium">신청일</th>
                     <th className="h-12 px-4 text-center align-middle font-medium">상세</th>
                   </tr>
@@ -571,8 +591,8 @@ export default function MypagePage() {
                         {activity.review_fee?.toLocaleString()}원
                       </td>
                       <td className="p-4 text-center">
-                        <span className={getApprovalStyle(activity.approval)}>
-                          {getApprovalText(activity.approval)}
+                        <span className={getPaymentStatusStyle(activity.payment_status)}>
+                          {getPaymentStatusText(activity.payment_status)}
                         </span>
                       </td>
                       <td className="p-4 text-center">
@@ -725,10 +745,10 @@ export default function MypagePage() {
                       <p className="mt-1">{selectedActivity.nickname}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-muted-foreground">승인 상태</Label>
+                      <Label className="text-sm font-medium text-muted-foreground">결제 상태</Label>
                       <div className="mt-1">
-                        <span className={getApprovalStyle(selectedActivity.approval)}>
-                          {getApprovalText(selectedActivity.approval)}
+                        <span className={getPaymentStatusStyle(selectedActivity.payment_status)}>
+                          {getPaymentStatusText(selectedActivity.payment_status)}
                         </span>
                       </div>
                     </div>

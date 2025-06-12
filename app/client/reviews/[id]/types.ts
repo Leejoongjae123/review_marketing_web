@@ -4,11 +4,12 @@ export interface Quota {
   quotaNumber: number;
   images: { file: File; preview: string; uploadedAt: string }[];
   receipts: { file: File; preview: string; uploadedAt: string }[];
-  status?: 'unopened' | 'available' | 'reserved' | 'complete';
+  status?: 'unavailable' | 'available' | 'reserved' | 'complete';
   reserved?: boolean;
   reservation_user_id?: string | null;
   created_at?: string;
   submissionData?: SubmissionHistoryData | null; // 제출된 데이터
+  opened_date?: string; // 오픈일시 (date 타입을 string으로 받음)
 }
 
 // 제출 이력 데이터 타입

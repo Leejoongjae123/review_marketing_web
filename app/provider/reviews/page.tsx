@@ -4,7 +4,7 @@ import { mockReviews } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight, Download, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Download, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -48,19 +48,27 @@ interface Review {
   end_date: string;
   period?: string;
   product_url?: string;
+  store_url?: string;
+  store_name?: string;
   created_at: string;
   updated_at?: string;
   provider_id?: string;
+  slots?: any[]; // 구좌 정보 배열
+  daily_count: number;
+  review_fee: number;
+  reservation_amount?: number;
+  purchase_cost?: number;
+  search_keyword?: string;
 }
 
 export default function ProviderReviewsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchCategory, setSearchCategory] = useState("product_name");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [pageSize, setPageSize] = useState(10);
+  const [platformFilter, setPlatformFilter] = useState("전체");
   const [reviews, setReviews] = useState<Review[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -71,6 +79,17 @@ export default function ProviderReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const supabase = createClient();
+
+  // 플랫폼 필터 옵션 정의
+  const platformOptions = [
+    { label: "전체", value: "전체" },
+    { label: "영수증리뷰", value: "영수증리뷰" },
+    { label: "예약자리뷰", value: "예약자리뷰" },
+    { label: "구글", value: "구글" },
+    { label: "카카오", value: "카카오" },
+    { label: "쿠팡", value: "쿠팡" },
+    { label: "스토어", value: "스토어" }
+  ];
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -96,9 +115,17 @@ export default function ProviderReviewsPage() {
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/provider/reviews?searchCategory=${searchCategory}&searchTerm=${encodeURIComponent(searchTerm)}&startDate=${startDate}&endDate=${endDate}&page=${currentPage}&pageSize=${pageSize}&providerId=${userId || ''}`
-      );
+      const params = new URLSearchParams({
+        searchTerm,
+        startDate,
+        endDate,
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        platformFilter: platformFilter === "전체" ? "" : platformFilter,
+        providerId: userId || ''
+      });
+      
+      const response = await fetch(`/api/provider/reviews?${params}`);
       
       if (!response.ok) {
         toast({
@@ -129,7 +156,7 @@ export default function ProviderReviewsPage() {
     if (userId) {
       fetchReviews();
     }
-  }, [currentPage, pageSize, userId]);
+  }, [currentPage, pageSize, platformFilter, userId]);
 
   useEffect(() => {
     const handleFocus = () => {
@@ -152,6 +179,11 @@ export default function ProviderReviewsPage() {
   const handleSearch = () => {
     setCurrentPage(1);
     fetchReviews();
+  };
+
+  const handlePlatformFilter = (platform: string) => {
+    setPlatformFilter(platform);
+    setCurrentPage(1);
   };
 
   const startIndex = (currentPage - 1) * pageSize;
@@ -198,7 +230,8 @@ export default function ProviderReviewsPage() {
   };
 
   const handleExcelDownload = () => {
-    toast({ title: "알림", description: "엑셀 다운로드 기능이 준비중입니다." });
+    // 엑셀 다운로드 로직 구현
+    console.log('엑셀 다운로드');
   };
 
   const handleDeleteReview = (id: string | number) => {
@@ -215,24 +248,15 @@ export default function ProviderReviewsPage() {
         });
         
         if (!response.ok) {
-          toast({
-            title: "오류",
-            description: "삭제에 실패했습니다.",
-            variant: "destructive",
-          });
           return;
         }
         
-        toast({ title: "성공", description: "리뷰가 삭제되었습니다." });
+        // 삭제 후 리스트 새로고침
         await fetchReviews();
         setDeleteDialogOpen(false);
         setReviewToDelete(null);
       } catch (error) {
-        toast({
-          title: "오류",
-          description: "리뷰 삭제 중 오류가 발생했습니다.",
-          variant: "destructive",
-        });
+        console.error('리뷰 삭제 중 오류 발생:', error);
       } finally {
         setLoading(false);
       }
@@ -256,148 +280,162 @@ export default function ProviderReviewsPage() {
       <h1 className="text-2xl font-bold tracking-tight">이벤트 목록</h1>
       <p className="text-muted-foreground">플랫폼에 등록된 모든 이벤트를 관리합니다.</p>
       
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="w-full md:w-64">
-          <Select value={searchCategory} onValueChange={setSearchCategory}>
-            <SelectTrigger>
-              <SelectValue placeholder="검색 카테고리" />
+      <div className="flex justify-between items-center gap-4 mb-4">
+        {/* 플랫폼 필터 버튼들 */}
+        <div className="flex gap-2 flex-wrap">
+          {platformOptions.map((option) => (
+            <Button
+              key={option.value}
+              variant={platformFilter === option.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => handlePlatformFilter(option.value)}
+              className="h-8"
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+
+        {/* 오른쪽 컨트롤들 */}
+        <div className="flex gap-2">
+          <Select value={pageSize.toString()} onValueChange={(value) => {
+            setPageSize(Number(value));
+            setCurrentPage(1);
+            fetchReviews();
+          }}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="페이지 크기" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="title">제목</SelectItem>
-              <SelectItem value="product_name">제품</SelectItem>
-              <SelectItem value="author_name">작성자</SelectItem>
-              <SelectItem value="content">내용</SelectItem>
-              <SelectItem value="platform">플랫폼</SelectItem>
-              <SelectItem value="seller">판매자</SelectItem>
+              <SelectItem value="10">10개</SelectItem>
+              <SelectItem value="50">50개</SelectItem>
+              <SelectItem value="100">100개</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={handleExcelDownload}>
+            <Download className="h-4 w-4 mr-2" />
+            엑셀 다운로드
+          </Button>
+          <Button onClick={handleAddProduct}>
+            <Plus className="h-4 w-4 mr-2" />
+            제품 등록
+          </Button>
         </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="flex-1">
           <Input
-            placeholder="검색어를 입력하세요"
+            placeholder="상호명으로 검색하세요"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full"
           />
         </div>
-        <div className="flex gap-2">
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full"
-            placeholder="시작일"
-          />
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full"
-            placeholder="종료일"
-          />
-        </div>
+        
         <Button onClick={handleSearch}>
           <Search className="h-4 w-4 mr-2" />
           검색
         </Button>
       </div>
-      
-      <div className="flex justify-end gap-2 mb-4">
-        <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
-          <SelectTrigger className="w-32">
-            <SelectValue placeholder="페이지 크기" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="10">10개</SelectItem>
-            <SelectItem value="50">50개</SelectItem>
-            <SelectItem value="100">100개</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline" onClick={handleExcelDownload}>
-          <Download className="h-4 w-4 mr-2" />
-          엑셀 다운로드
-        </Button>
-        
-      </div>
 
-      <div className="rounded-md border overflow-x-auto">
-        <table className="w-full min-w-[800px]">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="h-12 px-4 text-center align-middle font-medium">번호</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">플랫폼</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">이미지</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">제품명</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">옵션명</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">가격</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">배송비</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">판매자</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">기간</th>
-              <th className="h-12 px-4 text-center align-middle font-medium">URL</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={11} className="text-center p-4">
-                  로딩 중...
-                </td>
+      {loading ? (
+        <div className="flex justify-center items-center h-40">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full min-w-[1200px]">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">
+                  {platformFilter === "쿠팡" || platformFilter === "스토어" ? "제품명" : "상호명"}
+                </th>
+                {(platformFilter === "쿠팡" || platformFilter === "스토어") && (
+                  <th className="h-12 px-4 text-center align-middle font-medium w-24">검색어</th>
+                )}
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">
+                  {platformFilter === "쿠팡" || platformFilter === "스토어" ? "제품링크" : "상호링크"}
+                </th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">일건수</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-24">구좌수</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">작성기간</th>
               </tr>
-            ) : reviews.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="text-center p-4">
-                  데이터가 없습니다.
-                </td>
-              </tr>
-            ) : (
-              reviews.map((review, index) => (
-                <tr 
-                  key={review.id} 
-                  className="border-b hover:bg-muted/50 cursor-pointer" 
-                  onClick={() => handleViewReview(review.id)}
-                >
-                  <td className="p-4 text-center">{startIndex + index + 1}</td>
-                  <td className="p-4 text-center">{review.platform}</td>
-                  <td className="p-4 text-center">
-                    {review.image_url ? (
-                      <img 
-                        src={review.image_url}
-                        alt={review.product_name}
-                        className="w-16 h-16 object-cover mx-auto rounded-md"
-                      />
-                    ) : (
-                      <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
+            </thead>
+            <tbody>
+              {reviews.map((review, index) => {
+                const isProductPlatform = review.platform === "쿠팡" || review.platform === "스토어";
+                return (
+                  <tr 
+                    key={review.id} 
+                    className="border-b hover:bg-muted/50 cursor-pointer transition-colors" 
+                    onClick={() => handleViewReview(review.id)}
+                  >
+                    <td className="p-4 text-center">{startIndex + index + 1}</td>
+                    <td className="p-4 text-center">{review.platform}</td>
+                    <td className="p-4 text-center">
+                      {review.image_url ? (
+                        <img 
+                          src={review.image_url}
+                          alt={isProductPlatform ? review.product_name : review.store_name || review.product_name}
+                          className="w-16 h-16 object-cover mx-auto rounded-md"
+                        />
+                      ) : (
+                        <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
+                      )}
+                    </td>
+                    <td className="p-4 text-center">
+                      {isProductPlatform ? review.product_name : (review.store_name || review.product_name)}
+                    </td>
+                    {(platformFilter === "쿠팡" || platformFilter === "스토어") && (
+                      <td className="p-4 text-center">{review.search_keyword || review.option_name || '-'}</td>
                     )}
-                  </td>
-                  <td className="p-4 text-center">{review.product_name}</td>
-                  <td className="p-4 text-center">{review.option_name}</td>
-                  <td className="p-4 text-center">{review.price?.toLocaleString() ?? '0'}원</td>
-                  <td className="p-4 text-center">{review.shipping_fee?.toLocaleString() ?? '0'}원</td>
-                  <td className="p-4 text-center">{review.seller}</td>
-                  <td className="p-4 text-center">{review.period}</td>
-                  <td className="p-4 text-center">
-                    <a 
-                      href={review.product_url}
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-700 underline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      링크
-                    </a>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                    <td className="p-4 text-center">
+                      {(() => {
+                        const url = isProductPlatform ? review.product_url : review.store_url;
+                        return url ? (
+                          <a 
+                            href={url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            링크
+                          </a>
+                        ) : '-';
+                      })()}
+                    </td>
+                    <td className="p-4 text-center">{review.daily_count || '-'}</td>
+                    <td className="p-4 text-center">
+                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                        review?.daily_count 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {review.slots ? review.slots.length : 0}
+                      </span>
+                    </td>
+                    <td className="p-4 text-center">
+                      {review.start_date && review.end_date ? 
+                        `${new Date(review.start_date).toLocaleDateString()} - ${new Date(review.end_date).toLocaleDateString()}` : 
+                        review.period || '-'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
       
+      {/* 페이지네이션 */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          전체 {totalCount}개 항목 중 {reviews.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + pageSize, totalCount)}개 표시
+          전체 {totalCount}개 항목 중 {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)}개 표시
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -410,17 +448,29 @@ export default function ProviderReviewsPage() {
             이전
           </Button>
           <div className="flex items-center">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                className="w-9"
-                onClick={() => setCurrentPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let pageNumber;
+              if (totalPages <= 5) {
+                pageNumber = i + 1;
+              } else if (currentPage <= 3) {
+                pageNumber = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNumber = totalPages - 4 + i;
+              } else {
+                pageNumber = currentPage - 2 + i;
+              }
+              return (
+                <Button
+                  key={pageNumber}
+                  variant={currentPage === pageNumber ? "default" : "outline"}
+                  size="sm"
+                  className="w-9"
+                  onClick={() => setCurrentPage(pageNumber)}
+                >
+                  {pageNumber}
+                </Button>
+              );
+            })}
           </div>
           <Button
             variant="outline"

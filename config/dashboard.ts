@@ -23,6 +23,7 @@ export const dashboardConfig = {
       href: "/admin/history",
       icon: "history",
     },
+    
   ] as MenuItem[],
   
   /**

@@ -30,6 +30,8 @@ import { Plus, X, Eye, Upload } from "lucide-react";
 import Image from "next/image";
 import { toast } from "@/components/ui/use-toast";
 import { MultiProviderSelector, Provider } from "@/components/MultiProviderSelector";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 
 // 참여자 타입 정의
 interface Participant {
@@ -46,6 +48,7 @@ interface Participant {
 interface Quota {
   id: number;
   quotaNumber: number;
+  status: 'available' | 'unavailable';
   images: { file: File; preview: string; uploadedAt: string }[];
   receipts: { file: File; preview: string; uploadedAt: string }[];
 }
@@ -75,6 +78,7 @@ export default function AddReviewPage() {
     dailyCount: "",
     searchKeyword: "",
     purchaseCost: "",
+    guide: "",
   });
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -98,26 +102,56 @@ export default function AddReviewPage() {
   const [quotas, setQuotas] = useState<Quota[]>([]);
   const quotaFileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   
+  // 일괄 선택 관련 상태
+  const [selectedQuotas, setSelectedQuotas] = useState<Set<number>>(new Set());
+  const [isAllSelected, setIsAllSelected] = useState(false);
+  
+
+  
+  // API 호출 진행 상황 관련 상태 추가
+  const [isSubmittingQuotas, setIsSubmittingQuotas] = useState(false);
+  const [quotaSubmissionProgress, setQuotaSubmissionProgress] = useState(0);
+  const [currentQuotaIndex, setCurrentQuotaIndex] = useState(0);
+  const [totalQuotasToSubmit, setTotalQuotasToSubmit] = useState(0);
+  const [submissionStatus, setSubmissionStatus] = useState<string>("");
+  
   // 선택된 광고주 상태 변경 시 로그 출력
   useEffect(() => {
     console.log("선택된 광고주 목록:", selectedProviders);
   }, [selectedProviders]);
 
-  // 구좌 수 변경 시 테이블 생성
+  // 구좌 수와 일건수 변경 시 테이블 생성 및 상태 설정
   useEffect(() => {
-    const count = parseInt(quotaCount);
-    if (!isNaN(count) && count > 0) {
-      const newQuotas: Quota[] = Array.from({ length: count }, (_, index) => ({
-        id: index + 1,
-        quotaNumber: index + 1,
-        images: [],
-        receipts: []
-      }));
-      setQuotas(newQuotas);
+    const totalCount = parseInt(quotaCount);
+    const dailyCount = parseInt(formData.dailyCount);
+    
+    if (!isNaN(totalCount) && totalCount > 0) {
+      createSlots(totalCount, dailyCount);
     } else {
       setQuotas([]);
     }
-  }, [quotaCount]);
+  }, [quotaCount, formData.dailyCount]);
+
+  // 슬롯을 바로 생성하는 함수
+  const createSlots = (totalCount: number, dailyCount: number) => {
+    if (totalCount <= 0) return;
+    
+    const newQuotas: Quota[] = [];
+    
+    for (let i = 0; i < totalCount; i++) {
+      const quota: Quota = {
+        id: i + 1,
+        quotaNumber: i + 1,
+        status: (!isNaN(dailyCount) && dailyCount > 0 && i < dailyCount) ? 'available' : 'unavailable',
+        images: [],
+        receipts: []
+      };
+      
+      newQuotas.push(quota);
+    }
+    
+    setQuotas(newQuotas);
+  };
 
   // 페이지 로드 시 스토리지 버킷 초기화 요청
   useEffect(() => {
@@ -205,10 +239,69 @@ export default function AddReviewPage() {
       });
       
       const imageFiles = await Promise.all(imageFilesPromises);
+
+      // 먼저 기본 리뷰 데이터를 생성
+      const baseReviewData = {
+        platform: formData.platform,
+        productName: formData.productName,
+        storeName: formData.storeName,
+        price: formData.price,
+        shippingFee: formData.shippingFee,
+        seller: formData.seller,
+        status: formData.status,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        title: formData.title,
+        content: formData.content,
+        rating: formData.rating,
+        productUrl: formData.productUrl,
+        storeUrl: formData.storeUrl,
+        store_name: formData.storeName || formData.productName,
+        store_url: formData.storeUrl || formData.productUrl,
+        imageFiles: imageFiles,
+        participants_data: participants.length > 0 ? participants : undefined,
+        providers_data: selectedProviders.length > 0 ? selectedProviders : undefined,
+        reviewFee: formData.reviewFee,
+        reservationAmount: formData.reservationAmount,
+        totalCount: quotaCount,
+        dailyCount: formData.dailyCount,
+        searchKeyword: formData.searchKeyword,
+        purchaseCost: formData.purchaseCost,
+        guide: formData.guide,
+      };
+
+      // 기본 리뷰 생성 API 호출
+      setSubmissionStatus("기본 리뷰 정보를 생성하고 있습니다...");
+      const baseResponse = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(baseReviewData),
+      });
       
-      // 구좌 이미지들을 base64로 변환
-      const quotasWithBase64Files = await Promise.all(
-        quotas.map(async (quota) => {
+      const baseResult = await baseResponse.json();
+      
+      if (!baseResponse.ok) {
+        throw new Error(baseResult.error || '리뷰 등록에 실패했습니다.');
+      }
+
+      const reviewId = baseResult.reviewId;
+
+      // 구좌가 있는 경우에만 구좌별 API 호출 진행
+      if (quotas.length > 0) {
+        setIsSubmittingQuotas(true);
+        setTotalQuotasToSubmit(quotas.length);
+        setCurrentQuotaIndex(0);
+        setQuotaSubmissionProgress(0);
+
+        // 각 구좌별로 API 호출
+        for (let i = 0; i < quotas.length; i++) {
+          const quota = quotas[i];
+          setCurrentQuotaIndex(i + 1);
+          setSubmissionStatus(`구좌 ${quota.quotaNumber}번을 처리하고 있습니다...`);
+
+          // 구좌 이미지들을 base64로 변환
           const quotaImageFiles = await Promise.all(
             quota.images.map(async (image) => {
               return new Promise<{ base64: string; uploadedAt: string }>((resolve) => {
@@ -238,65 +331,56 @@ export default function AddReviewPage() {
               });
             })
           );
-          
-          return {
+
+          // 개별 구좌 API 호출
+          const quotaData = {
+            reviewId: reviewId,
             quotaNumber: quota.quotaNumber,
+            status: quota.status,
             images: quotaImageFiles,
             receipts: quotaReceiptFiles
           };
-        })
-      );
-      console.log('formData:',formData)
 
-      // JSON 데이터 준비
-      const requestData = {
-        platform: formData.platform,
-        productName: formData.productName,
-        storeName: formData.storeName,
-        price: formData.price,
-        shippingFee: formData.shippingFee,
-        seller: formData.seller,
-        status: formData.status,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        title: formData.title,
-        content: formData.content,
-        rating: formData.rating,
-        productUrl: formData.productUrl,
-        storeUrl: formData.storeUrl,
-        // DB 필드명에 맞춘 필드들
-        store_name: formData.storeName || formData.productName,
-        store_url: formData.storeUrl || formData.productUrl,
-        imageFiles: imageFiles,
-        participants_data: participants.length > 0 ? participants : undefined,
-        providers_data: selectedProviders.length > 0 ? selectedProviders : undefined,
-        quotas_data: quotasWithBase64Files.length > 0 ? quotasWithBase64Files : undefined,
-        reviewFee: formData.reviewFee,
-        reservationAmount: formData.reservationAmount,
-        dailyCount: formData.dailyCount,
-        searchKeyword: formData.searchKeyword,
-        purchaseCost: formData.purchaseCost,
-      };
-      
-      // API 호출
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData),
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || '리뷰 등록에 실패했습니다.');
+          const quotaResponse = await fetch('/api/reviews/quotas', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(quotaData),
+          });
+
+          if (!quotaResponse.ok) {
+            const errorResult = await quotaResponse.json();
+            console.error(`구좌 ${quota.quotaNumber} 처리 실패:`, errorResult);
+            // 개별 구좌 실패는 로그만 남기고 계속 진행
+          }
+
+          // 진행률 업데이트
+          const progress = ((i + 1) / quotas.length) * 100;
+          setQuotaSubmissionProgress(progress);
+
+          // API 호출 간격 조절 (너무 빠르게 호출하지 않도록)
+          if (i < quotas.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        }
+
+        setSubmissionStatus("모든 구좌 처리가 완료되었습니다!");
+        
+        // 완료 후 약간의 지연
+        setTimeout(() => {
+          setIsSubmittingQuotas(false);
+          setQuotaSubmissionProgress(0);
+          setCurrentQuotaIndex(0);
+          setTotalQuotasToSubmit(0);
+          setSubmissionStatus("");
+        }, 1000);
       }
       
-      if (result.warning) {
+      if (baseResult.warning) {
         toast({
           title: "일부 데이터만 저장됨",
-          description: result.warning,
+          description: baseResult.warning,
           variant: "destructive",
         });
       } else {
@@ -317,6 +401,7 @@ export default function AddReviewPage() {
       });
     } finally {
       setIsSubmitting(false);
+      setIsSubmittingQuotas(false);
     }
   };
 
@@ -454,6 +539,56 @@ export default function AddReviewPage() {
     if (inputRef) {
       inputRef.click();
     }
+  };
+
+  // 일괄 선택 관련 핸들러
+  const handleSelectQuota = (quotaId: number) => {
+    const newSelected = new Set(selectedQuotas);
+    if (newSelected.has(quotaId)) {
+      newSelected.delete(quotaId);
+    } else {
+      newSelected.add(quotaId);
+    }
+    setSelectedQuotas(newSelected);
+    setIsAllSelected(newSelected.size === quotas.length && quotas.length > 0);
+  };
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedQuotas(new Set());
+      setIsAllSelected(false);
+    } else {
+      const allIds = new Set(quotas.map(q => q.id));
+      setSelectedQuotas(allIds);
+      setIsAllSelected(true);
+    }
+  };
+
+  // 선택된 구좌들의 상태를 일괄 변경
+  const handleBulkStatusChange = (newStatus: 'available' | 'unavailable') => {
+    if (selectedQuotas.size === 0) {
+      toast({
+        title: "선택된 구좌가 없습니다",
+        description: "상태를 변경할 구좌를 먼저 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setQuotas(prev => prev.map(quota => 
+      selectedQuotas.has(quota.id) 
+        ? { ...quota, status: newStatus }
+        : quota
+    ));
+
+    toast({
+      title: "상태 변경 완료",
+      description: `선택된 ${selectedQuotas.size}개 구좌의 상태가 ${newStatus === 'available' ? '활성' : '비활성'}으로 변경되었습니다.`,
+    });
+
+    // 선택 해제
+    setSelectedQuotas(new Set());
+    setIsAllSelected(false);
   };
 
   return (
@@ -750,6 +885,18 @@ export default function AddReviewPage() {
             )}
           </div>
 
+          <div className="space-y-2 col-span-2">
+            <Label htmlFor="guide">리뷰 가이드</Label>
+            <Textarea
+              id="guide"
+              value={formData.guide}
+              onChange={(e) => setFormData(prev => ({ ...prev, guide: e.target.value }))}
+              placeholder="리뷰 작성 가이드를 입력하세요"
+              rows={6}
+              className="resize-none"
+            />
+
+          </div>
 
         </div>
 
@@ -759,7 +906,7 @@ export default function AddReviewPage() {
           <h2 className="text-xl font-semibold">구좌 관리</h2>
           
           <div className="space-y-2">
-            <Label htmlFor="quotaCount">작성 가능한 구좌 수</Label>
+            <Label htmlFor="quotaCount">전체 슬롯 개수</Label>
             <div className="flex items-center gap-4">
               <Input
                 id="quotaCount"
@@ -768,21 +915,68 @@ export default function AddReviewPage() {
                 max="100"
                 value={quotaCount}
                 onChange={(e) => setQuotaCount(e.target.value)}
-                placeholder="구좌 수를 입력하세요"
+                placeholder="전체 슬롯 개수를 입력하세요"
                 className="w-48"
               />
               <span className="text-sm text-muted-foreground">
-                {quotas.length > 0 && `${quotas.length}개의 구좌가 생성되었습니다.`}
+                {quotas.length > 0 && (
+                  <>
+                    전체 {quotas.length}개 슬롯 중 {quotas.filter(q => q.status === 'available').length}개 활성화
+                    {formData.dailyCount && ` (일건수: ${formData.dailyCount}개)`}
+                  </>
+                )}
               </span>
             </div>
           </div>
 
           {quotas.length > 0 && (
             <div className="space-y-4">
+              {/* 일괄 조작 버튼들 */}
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-medium">전체 선택</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    선택된 구좌: {selectedQuotas.size}개
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkStatusChange('available')}
+                    disabled={selectedQuotas.size === 0}
+                    className="text-green-600 border-green-300 hover:bg-green-50"
+                  >
+                    선택 항목 활성화
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkStatusChange('unavailable')}
+                    disabled={selectedQuotas.size === 0}
+                    className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                  >
+                    선택 항목 비활성화
+                  </Button>
+                </div>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12 text-center">선택</TableHead>
                     <TableHead className="w-20 text-center">구좌번호</TableHead>
+                    <TableHead className="w-20 text-center">상태</TableHead>
                     <TableHead className="text-center">이미지</TableHead>
                     <TableHead className="text-center">영수증</TableHead>
                     <TableHead className="text-center">작성일시</TableHead>
@@ -790,17 +984,42 @@ export default function AddReviewPage() {
                 </TableHeader>
                 <TableBody>
                   {quotas.map((quota) => (
-                    <TableRow key={quota.id}>
+                    <TableRow key={quota.id} className={quota.status === 'unavailable' ? 'bg-gray-50' : ''}>
+                      {/* 선택 체크박스 */}
+                      <TableCell className="text-center border-r">
+                        <input
+                          type="checkbox"
+                          checked={selectedQuotas.has(quota.id)}
+                          onChange={() => handleSelectQuota(quota.id)}
+                          className="w-4 h-4"
+                        />
+                      </TableCell>
+                      
                       {/* 구좌번호 */}
                       <TableCell className="text-center font-medium border-r">
                         {quota.quotaNumber}
                       </TableCell>
                       
+                      {/* 상태 */}
+                      <TableCell className="text-center border-r">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          quota.status === 'available' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {quota.status === 'available' ? '활성' : '비활성'}
+                        </span>
+                      </TableCell>
+                      
                       {/* 이미지 셀 */}
                       <TableCell className="border-r">
                         <div 
-                          className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 hover:border-primary transition-colors cursor-pointer flex flex-col items-center justify-center"
-                          onClick={() => handleAddQuotaFile(quota.id, 'images')}
+                          className={`min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors cursor-pointer flex flex-col items-center justify-center ${
+                            quota.status === 'available' 
+                              ? 'border-gray-300 hover:border-primary' 
+                              : 'border-gray-200 cursor-not-allowed bg-gray-50'
+                          }`}
+                          onClick={() => quota.status === 'available' && handleAddQuotaFile(quota.id, 'images')}
                         >
                           <input
                             type="file"
@@ -811,6 +1030,7 @@ export default function AddReviewPage() {
                             accept="image/*"
                             multiple
                             onChange={(e) => handleQuotaImageChange(quota.id, 'images', e)}
+                            disabled={quota.status === 'unavailable'}
                           />
                           
                           {quota.images.length > 0 ? (
@@ -825,23 +1045,31 @@ export default function AddReviewPage() {
                                       className="object-cover"
                                     />
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemoveQuotaFile(quota.id, 'images', imageIndex);
-                                    }}
-                                    className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                  >
-                                    <X className="h-2 w-2" />
-                                  </button>
+                                  {quota.status === 'available' && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveQuotaFile(quota.id, 'images', imageIndex);
+                                      }}
+                                      className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                    >
+                                      <X className="h-2 w-2" />
+                                    </button>
+                                  )}
                                 </div>
                               ))}
                             </div>
                           ) : (
                             <div className="text-center">
-                              <Plus className="h-6 w-6 text-gray-400 mx-auto mb-1" />
-                              <span className="text-xs text-gray-500">이미지 첨부</span>
+                              <Plus className={`h-6 w-6 mx-auto mb-1 ${
+                                quota.status === 'available' ? 'text-gray-400' : 'text-gray-300'
+                              }`} />
+                              <span className={`text-xs ${
+                                quota.status === 'available' ? 'text-gray-500' : 'text-gray-400'
+                              }`}>
+                                {quota.status === 'available' ? '이미지 첨부' : '비활성'}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -850,8 +1078,12 @@ export default function AddReviewPage() {
                       {/* 영수증 셀 */}
                       <TableCell className="border-r">
                         <div 
-                          className="min-h-[60px] border-2 border-dashed border-gray-300 rounded-lg p-2 hover:border-primary transition-colors cursor-pointer flex flex-col items-center justify-center"
-                          onClick={() => handleAddQuotaFile(quota.id, 'receipts')}
+                          className={`min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors cursor-pointer flex flex-col items-center justify-center ${
+                            quota.status === 'available' 
+                              ? 'border-gray-300 hover:border-primary' 
+                              : 'border-gray-200 cursor-not-allowed bg-gray-50'
+                          }`}
+                          onClick={() => quota.status === 'available' && handleAddQuotaFile(quota.id, 'receipts')}
                         >
                           <input
                             type="file"
@@ -862,6 +1094,7 @@ export default function AddReviewPage() {
                             accept="image/*"
                             multiple
                             onChange={(e) => handleQuotaImageChange(quota.id, 'receipts', e)}
+                            disabled={quota.status === 'unavailable'}
                           />
                           
                           {quota.receipts.length > 0 ? (
@@ -876,23 +1109,31 @@ export default function AddReviewPage() {
                                       className="object-cover"
                                     />
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemoveQuotaFile(quota.id, 'receipts', receiptIndex);
-                                    }}
-                                    className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                  >
-                                    <X className="h-2 w-2" />
-                                  </button>
+                                  {quota.status === 'available' && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveQuotaFile(quota.id, 'receipts', receiptIndex);
+                                      }}
+                                      className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                    >
+                                      <X className="h-2 w-2" />
+                                    </button>
+                                  )}
                                 </div>
                               ))}
                             </div>
                           ) : (
                             <div className="text-center">
-                              <Plus className="h-6 w-6 text-gray-400 mx-auto mb-1" />
-                              <span className="text-xs text-gray-500">영수증 첨부</span>
+                              <Plus className={`h-6 w-6 mx-auto mb-1 ${
+                                quota.status === 'available' ? 'text-gray-400' : 'text-gray-300'
+                              }`} />
+                              <span className={`text-xs ${
+                                quota.status === 'available' ? 'text-gray-500' : 'text-gray-400'
+                              }`}>
+                                {quota.status === 'available' ? '영수증 첨부' : '비활성'}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1120,6 +1361,49 @@ export default function AddReviewPage() {
                 등록
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
+
+      {/* API 호출 진행 상황 모달 */}
+      <Dialog open={isSubmittingQuotas} onOpenChange={() => {}}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+              {submissionStatus}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary mb-2 transition-all duration-300">
+                {currentQuotaIndex} / {totalQuotasToSubmit}
+              </div>
+              <div className="text-sm text-muted-foreground mb-4">
+                {quotaSubmissionProgress === 100 ? '모든 구좌 처리가 완료되었습니다!' : '구좌를 처리하고 있습니다...'}
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <Progress 
+                value={quotaSubmissionProgress} 
+                className="w-full h-4 transition-all duration-300" 
+              />
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">진행률</span>
+                <span className="font-medium text-primary">
+                  {Math.round(quotaSubmissionProgress)}%
+                </span>
+              </div>
+            </div>
+            
+            {quotaSubmissionProgress < 100 && (
+              <div className="text-center text-xs text-muted-foreground animate-pulse">
+                잠시만 기다려주세요...
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

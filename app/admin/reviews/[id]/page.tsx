@@ -4,6 +4,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -59,6 +60,9 @@ interface Quota {
   quotaNumber: number;
   images: { file: File; preview: string; uploadedAt: string }[];
   receipts: { file: File; preview: string; uploadedAt: string }[];
+  status?: 'unopened' | 'available' | 'reserved' | 'complete';
+  slotId?: string; // 실제 DB의 슬롯 ID
+  openedDate?: string; // 슬롯이 오픈된 날짜
 }
 
 // 파일을 base64로 변환하는 함수
@@ -99,6 +103,8 @@ export default function EditReviewPage() {
     dailyCount: "",
     searchKeyword: "",
     purchaseCost: "",
+    totalCount: "", // 전체 건수 추가
+    reviewGuide: "", // 리뷰 가이드 추가
   });
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -121,6 +127,11 @@ export default function EditReviewPage() {
   const [quotaCount, setQuotaCount] = useState<string>("");
   const [quotas, setQuotas] = useState<Quota[]>([]);
   const quotaFileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  
+  // 슬롯 상태 관리 관련 상태
+  const [selectedQuotas, setSelectedQuotas] = useState<Set<number>>(new Set());
+  const [isAllSelected, setIsAllSelected] = useState(false);
+  const [isUpdatingSlots, setIsUpdatingSlots] = useState(false);
 
   // 리뷰 데이터 로드
   useEffect(() => {
@@ -166,6 +177,8 @@ export default function EditReviewPage() {
           dailyCount: review.daily_count ? review.daily_count.toString() : "",
           searchKeyword: review.search_keyword || "",
           purchaseCost: review.purchase_cost ? review.purchase_cost.toString() : "",
+          totalCount: review.slots ? review.slots.length.toString() : "",
+          reviewGuide: review.guide || "",
         });
         
         // 광고주 설정
@@ -201,6 +214,9 @@ export default function EditReviewPage() {
           const loadedQuotas: Quota[] = review.slots.map((slot: any) => ({
             id: slot.slot_number,
             quotaNumber: slot.slot_number,
+            slotId: slot.id, // 실제 DB의 슬롯 ID 저장
+            status: slot.status || 'unopened',
+            openedDate: slot.opened_date, // 오픈 날짜 추가
             images: (slot.images || []).map((url: string, index: number) => ({
               file: new File([], `existing-image-${index}`, { type: 'image/jpeg' }),
               preview: url,
@@ -255,6 +271,8 @@ export default function EditReviewPage() {
             newQuotas.push({
               id: quotaNumber,
               quotaNumber: quotaNumber,
+              status: 'unopened',
+              openedDate: undefined,
               images: [],
               receipts: []
             });
@@ -313,6 +331,7 @@ export default function EditReviewPage() {
     if (!formData.title) validationErrors.push("타이틀");
     if (!formData.reviewFee) validationErrors.push("리뷰비");
     if (!formData.dailyCount) validationErrors.push("일건수");
+    if (!formData.reviewGuide) validationErrors.push("리뷰 가이드");
     
     // 플랫폼별 필수 필드
     if (isProductPlatform) {
@@ -412,6 +431,7 @@ export default function EditReviewPage() {
         provider1: selectedProviders[0]?.id || null,
         provider2: selectedProviders[1]?.id || null,
         provider3: selectedProviders[2]?.id || null,
+        guide: formData.reviewGuide,
         quotas_data: quotasData.filter(quota => 
           // 새로 추가된 파일이 하나라도 있는 구좌만 전송
           quota.images.length > 0 || quota.receipts.length > 0
@@ -463,6 +483,9 @@ export default function EditReviewPage() {
             const loadedQuotas: Quota[] = review.slots.map((slot: any) => ({
               id: slot.slot_number,
               quotaNumber: slot.slot_number,
+              slotId: slot.id, // 실제 DB의 슬롯 ID 저장
+              status: slot.status || 'unopened',
+              openedDate: slot.opened_date, // 오픈 날짜 추가
               images: (slot.images || []).map((url: string, index: number) => ({
                 file: new File([], `existing-image-${index}`, { type: 'image/jpeg' }),
                 preview: url,
@@ -714,6 +737,119 @@ export default function EditReviewPage() {
     const inputRef = quotaFileInputRefs.current[`${quotaId}-${type}`];
     if (inputRef) {
       inputRef.click();
+    }
+  };
+
+  // 슬롯 상태 관리 핸들러들
+  const handleSelectQuota = (quotaId: number) => {
+    const newSelected = new Set(selectedQuotas);
+    if (newSelected.has(quotaId)) {
+      newSelected.delete(quotaId);
+    } else {
+      newSelected.add(quotaId);
+    }
+    setSelectedQuotas(newSelected);
+    setIsAllSelected(newSelected.size === quotas.length && quotas.length > 0);
+  };
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedQuotas(new Set());
+      setIsAllSelected(false);
+    } else {
+      const allIds = new Set(quotas.map(q => q.id));
+      setSelectedQuotas(allIds);
+      setIsAllSelected(true);
+    }
+  };
+
+  // 선택된 슬롯들의 상태를 일괄 변경 (실제 DB 업데이트)
+  const handleBulkSlotStatusChange = async (newStatus: 'unopened' | 'available') => {
+    if (selectedQuotas.size === 0) {
+      toast({
+        title: "선택된 슬롯이 없습니다",
+        description: "상태를 변경할 슬롯을 먼저 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdatingSlots(true);
+    
+    try {
+      // 선택된 슬롯들의 업데이트 데이터 준비
+      const slotUpdates = quotas
+        .filter(quota => selectedQuotas.has(quota.id) && quota.slotId)
+        .map(quota => ({
+          slotId: quota.slotId,
+          status: newStatus,
+          slotNumber: quota.quotaNumber
+        }));
+
+      if (slotUpdates.length === 0) {
+        toast({
+          title: "업데이트할 슬롯이 없습니다",
+          description: "선택된 슬롯 중 유효한 슬롯이 없습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 일괄 업데이트 API 호출
+      const response = await fetch(`/api/reviews/${reviewId}/bulk-update-slots`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slotUpdates: slotUpdates
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '슬롯 상태 업데이트에 실패했습니다.');
+      }
+
+      // 로컬 상태 업데이트
+      const currentDate = new Date().toISOString().split('T')[0];
+      setQuotas(prev => prev.map(quota => 
+        selectedQuotas.has(quota.id) 
+          ? { 
+              ...quota, 
+              status: newStatus,
+              openedDate: newStatus === 'available' ? currentDate : (newStatus === 'unopened' ? undefined : quota.openedDate)
+            }
+          : quota
+      ));
+
+      toast({
+        title: "슬롯 상태 변경 완료",
+        description: `선택된 ${selectedQuotas.size}개 슬롯의 상태가 ${newStatus === 'available' ? '활성' : '미오픈'}으로 변경되었습니다.`,
+      });
+
+      // 경고가 있는 경우 표시
+      if (result.warnings && result.warnings.length > 0) {
+        toast({
+          title: "일부 업데이트 실패",
+          description: `${result.warnings.length}개의 슬롯 업데이트에 실패했습니다.`,
+          variant: "destructive",
+        });
+      }
+
+      // 선택 해제
+      setSelectedQuotas(new Set());
+      setIsAllSelected(false);
+
+    } catch (error) {
+      toast({
+        title: "슬롯 상태 변경 실패",
+        description: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingSlots(false);
     }
   };
 
@@ -1021,6 +1157,22 @@ export default function EditReviewPage() {
             )}
           </div>
 
+          {/* 리뷰 가이드 */}
+          <div className="space-y-2 col-span-2">
+            <Label htmlFor="reviewGuide">리뷰 가이드 <span className="text-red-500">*</span></Label>
+            <Textarea
+              id="reviewGuide"
+              value={formData.reviewGuide}
+              onChange={(e) => setFormData(prev => ({ ...prev, reviewGuide: e.target.value }))}
+              placeholder="리뷰 작성 가이드를 입력하세요"
+              className={!formData.reviewGuide ? "border-red-300 focus:border-red-500" : ""}
+              rows={4}
+              aria-required="true"
+            />
+            {!formData.reviewGuide && (
+              <p className="text-red-500 text-sm mt-1">리뷰 가이드는 필수 입력사항입니다.</p>
+            )}
+          </div>
 
         </div>
 
@@ -1050,10 +1202,53 @@ export default function EditReviewPage() {
 
           {quotas.length > 0 && (
             <div className="space-y-4">
+              {/* 슬롯 상태 일괄 조작 버튼들 */}
+              <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-medium">전체 선택</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    선택된 슬롯: {selectedQuotas.size}개
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkSlotStatusChange('available')}
+                    disabled={selectedQuotas.size === 0 || isUpdatingSlots}
+                    className="text-green-600 border-green-300 hover:bg-green-50"
+                  >
+                    {isUpdatingSlots ? "업데이트 중..." : "선택 슬롯 활성화"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleBulkSlotStatusChange('unopened')}
+                    disabled={selectedQuotas.size === 0 || isUpdatingSlots}
+                    className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                  >
+                    {isUpdatingSlots ? "업데이트 중..." : "선택 슬롯 미오픈"}
+                  </Button>
+                </div>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12 text-center">선택</TableHead>
                     <TableHead className="w-20 text-center">구좌번호</TableHead>
+                    <TableHead className="w-15 text-center">상태</TableHead>
+                    <TableHead className="w-20 text-center">오픈일자</TableHead>
                     <TableHead className="text-center">이미지</TableHead>
                     <TableHead className="text-center">영수증</TableHead>
                     <TableHead className="text-center">작성일시</TableHead>
@@ -1061,10 +1256,45 @@ export default function EditReviewPage() {
                 </TableHeader>
                 <TableBody>
                   {quotas.map((quota) => (
-                    <TableRow key={quota.id}>
+                    <TableRow key={quota.id} className={quota.status === 'unopened' ? 'bg-gray-50' : ''}>
+                      {/* 선택 체크박스 */}
+                      <TableCell className="text-center border-r">
+                        <input
+                          type="checkbox"
+                          checked={selectedQuotas.has(quota.id)}
+                          onChange={() => handleSelectQuota(quota.id)}
+                          className="w-4 h-4"
+                        />
+                      </TableCell>
+                      
                       {/* 구좌번호 */}
                       <TableCell className="text-center font-medium border-r">
                         {quota.quotaNumber}
+                      </TableCell>
+                      
+                      {/* 상태 */}
+                      <TableCell className="text-center border-r">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          quota.status === 'available' 
+                            ? 'bg-green-100 text-green-800' 
+                            : quota.status === 'reserved'
+                            ? 'bg-blue-100 text-blue-800'
+                            : quota.status === 'complete'
+                            ? 'bg-purple-100 text-purple-800'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {quota.status === 'available' ? '오픈' 
+                           : quota.status === 'reserved' ? '예약됨'
+                           : quota.status === 'complete' ? '완료'
+                           : '미오픈'}
+                        </span>
+                      </TableCell>
+                      
+                      {/* 오픈일자 */}
+                      <TableCell className="text-center border-r">
+                        <span className="text-sm text-gray-600">
+                          {quota.openedDate ? new Date(quota.openedDate).toLocaleDateString('ko-KR') : '-'}
+                        </span>
                       </TableCell>
                       
                       {/* 이미지 셀 */}

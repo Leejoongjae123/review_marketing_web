@@ -22,6 +22,11 @@ export const adminMenuItems: MenuItem[] = [
     href: "/admin/history",
     icon: "history",
   },
+  {
+    title: "정산 관리", 
+    href: "/admin/payment",
+    icon: "calculator",
+  },
 ];
 
 // 광고주 메뉴 아이템
@@ -40,7 +45,7 @@ export const providerMenuItems: MenuItem[] = [
     title: "응모 관리",
     href: "/provider/history",
     icon: "history",
-  },
+  }
 ];
 
 // 리뷰어 메뉴 아이템

@@ -16,6 +16,7 @@ import {
   UserPlus,
   Megaphone,
   UserRound,
+  Calculator,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { usePathname, useRouter } from "next/navigation";
@@ -170,6 +171,8 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
         return <Megaphone className="h-4 w-4" />;
       case "mypage":
         return <UserRound className="h-4 w-4" />;
+      case "calculator":
+        return <Calculator className="h-4 w-4" />;
       default:
         return null;
     }

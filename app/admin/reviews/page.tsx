@@ -47,6 +47,9 @@ interface Review {
   end_date: string;
   period?: string;
   product_url?: string;
+  store_name?: string;
+  store_url?: string;
+  search_keyword?: string;
   created_at: string;
   updated_at?: string;
   slots?: any[]; // 구좌 정보 배열
@@ -59,7 +62,6 @@ interface Review {
 export default function AdminReviewsPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchCategory, setSearchCategory] = useState("product_name");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [pageSize, setPageSize] = useState(10);
@@ -89,7 +91,6 @@ export default function AdminReviewsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        searchCategory,
         searchTerm,
         startDate,
         endDate,
@@ -283,7 +284,7 @@ export default function AdminReviewsPage() {
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="flex-1">
           <Input
-            placeholder="검색어를 입력하세요"
+            placeholder="상호명 또는 제목으로 검색하세요"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full"
@@ -307,6 +308,7 @@ export default function AdminReviewsPage() {
                 <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">제목</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-32">
                   {platformFilter === "쿠팡" || platformFilter === "스토어" ? "제품명" : "상호명"}
                 </th>
@@ -333,29 +335,39 @@ export default function AdminReviewsPage() {
                       {review.image_url ? (
                         <img 
                           src={review.image_url} 
-                          alt={review.product_name} 
+                          alt={isProductPlatform ? review.product_name : review.store_name || review.product_name} 
                           className="w-16 h-16 object-cover mx-auto rounded-md"
                         />
                       ) : (
                         <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
                       )}
                     </td>
-                    <td className="p-4 text-center">{review.product_name}</td>
+                    <td className="p-4 text-center">
+                      <div className="max-w-32 truncate" title={review.title}>
+                        {review.title || '-'}
+                      </div>
+                    </td>
+                    <td className="p-4 text-center">
+                      {isProductPlatform ? review.product_name : (review.store_name || review.product_name)}
+                    </td>
                     {(platformFilter === "쿠팡" || platformFilter === "스토어") && (
-                      <td className="p-4 text-center">{review.option_name || '-'}</td>
+                      <td className="p-4 text-center">{review.search_keyword || review.option_name || '-'}</td>
                     )}
                     <td className="p-4 text-center">
-                      {review.product_url ? (
-                        <a 
-                          href={review.product_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          링크
-                        </a>
-                      ) : '-'}
+                      {(() => {
+                        const url = isProductPlatform ? review.product_url : review.store_url;
+                        return url ? (
+                          <a 
+                            href={url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            링크
+                          </a>
+                        ) : '-';
+                      })()}
                     </td>
                     <td className="p-4 text-center">{review.daily_count || '-'}</td>
                     <td className="p-4 text-center">

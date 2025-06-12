@@ -17,9 +17,9 @@ export async function GET(request: NextRequest) {
   try {
     let query = supabase.from("reviews").select("*", { count: "exact" });
 
-    // 검색어 필터링
+    // 검색어 필터링 (제목과 상호명/제품명 기준)
     if (searchTerm) {
-      query = query.ilike(searchCategory, `%${searchTerm}%`);
+      query = query.or(`title.ilike.%${searchTerm}%,product_name.ilike.%${searchTerm}%,store_name.ilike.%${searchTerm}%`);
     }
 
     // 플랫폼 필터링
@@ -303,8 +303,10 @@ export async function POST(req: Request) {
       search_keyword: formData.searchKeyword || null,
       review_fee: formData.reviewFee ? parseInt(formData.reviewFee) : 0,
       reservation_amount: formData.reservationAmount ? parseInt(formData.reservationAmount) : null,
+      total_count: formData.totalCount ? parseInt(formData.totalCount) : 0,
       daily_count: formData.dailyCount ? parseInt(formData.dailyCount) : 0,
       purchase_cost: formData.purchaseCost ? parseInt(formData.purchaseCost) : null,
+      guide: formData.guide || null,
     };
     
     console.log('저장할 reviewData: ', JSON.stringify({
@@ -340,84 +342,46 @@ export async function POST(req: Request) {
 
     const reviewId = reviewResult.id;
 
-    // 구좌 데이터 저장
-    if (formData.quotas_data && formData.quotas_data.length > 0) {
-      console.log('구좌 데이터 처리 시작:', formData.quotas_data.length);
+    // 전체 건수만큼 슬롯 생성 (일건수만큼은 available, 나머지는 unopened)
+    const totalCount = parseInt(formData.totalCount) || 0;
+    const dailyCount = parseInt(formData.dailyCount) || 0;
+    
+    if (totalCount > 0) {
+      console.log(`전체 건수 ${totalCount}개만큼 슬롯 생성 시작 (일건수 ${dailyCount}개는 available, 나머지는 unopened)`);
       
       const slotsToInsert = [];
+      const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD 형식
       
-      for (const quotaData of formData.quotas_data) {
-        const slotNumber = quotaData.quotaNumber;
-        const imageUrls = [];
-        const receiptUrls = [];
-        const currentTime = new Date().toISOString();
-        let imagesUpdatedAt = null;
-        let receiptsUpdatedAt = null;
-
-        // 구좌 이미지 업로드
-        if (quotaData.images && quotaData.images.length > 0) {
-          for (const imageData of quotaData.images) {
-            const uploadedUrl = await uploadBase64Image(
-              imageData.base64,
-              supabase,
-              `slot-${slotNumber}-image`
-            );
-            if (uploadedUrl) {
-              imageUrls.push(uploadedUrl);
-            }
-          }
-          // 이미지가 있으면 images_updated_at 설정
-          if (imageUrls.length > 0) {
-            imagesUpdatedAt = currentTime;
-          }
-        }
-
-        // 구좌 영수증 업로드
-        if (quotaData.receipts && quotaData.receipts.length > 0) {
-          for (const receiptData of quotaData.receipts) {
-            const uploadedUrl = await uploadBase64Image(
-              receiptData.base64,
-              supabase,
-              `slot-${slotNumber}-receipt`
-            );
-            if (uploadedUrl) {
-              receiptUrls.push(uploadedUrl);
-            }
-          }
-          // 영수증이 있으면 receipts_updated_at 설정
-          if (receiptUrls.length > 0) {
-            receiptsUpdatedAt = currentTime;
-          }
-        }
-
-        // slots 데이터를 배열에 추가
+      // 전체 건수만큼 슬롯 생성
+      for (let i = 1; i <= totalCount; i++) {
         const slotData = {
           review_id: reviewId,
-          slot_number: slotNumber,
-          images: imageUrls,
-          receipts: receiptUrls,
-          images_updated_at: imagesUpdatedAt,
-          receipts_updated_at: receiptsUpdatedAt,
+          slot_number: i,
+          status: i <= dailyCount ? 'available' : 'unopened', // 일건수만큼은 available, 나머지는 unopened
+          opened_date: i <= dailyCount ? currentDate : null, // 일건수만큼만 opened_date 설정, 나머지는 null
+          images: [],
+          receipts: [],
+          images_updated_at: null,
+          receipts_updated_at: null,
         };
         
         slotsToInsert.push(slotData);
       }
 
-      // 모든 구좌 데이터를 한꺼번에 insert
-      if (slotsToInsert.length > 0) {
-        const { error: slotsError } = await supabase
-          .from("slots")
-          .insert(slotsToInsert);
+      // 모든 슬롯 데이터를 한꺼번에 insert
+      const { error: slotsError } = await supabase
+        .from("slots")
+        .insert(slotsToInsert);
 
-        if (slotsError) {
-          console.error('구좌 데이터 일괄 저장 실패:', slotsError);
-          // 구좌 저장 실패해도 리뷰는 성공으로 처리
-        } else {
-          console.log(`${slotsToInsert.length}개 구좌 데이터 일괄 저장 성공`);
-        }
+      if (slotsError) {
+        console.error('슬롯 데이터 일괄 저장 실패:', slotsError);
+        // 슬롯 저장 실패해도 리뷰는 성공으로 처리
+      } else {
+        console.log(`${slotsToInsert.length}개 슬롯 데이터 일괄 저장 성공 (${dailyCount}개는 available with opened_date, ${totalCount - dailyCount}개는 unopened 상태)`);
       }
     }
 
+    // 구좌 데이터는 별도 API에서 처리하므로 여기서는 제거
     // 리뷰 참가자 테이블에 데이터 추가
     
 

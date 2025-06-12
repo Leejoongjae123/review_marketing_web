@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
   
   // URL 파라미터 파싱
   const url = new URL(request.url);
-  const searchCategory = url.searchParams.get("searchCategory") || "";
   const searchTerm = url.searchParams.get("searchTerm") || "";
   const startDate = url.searchParams.get("startDate") || "";
   const endDate = url.searchParams.get("endDate") || "";
@@ -23,9 +22,9 @@ export async function GET(request: NextRequest) {
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false });
   
-  // 검색 조건 적용
-  if (searchTerm && searchCategory) {
-    query = query.ilike(searchCategory, `%${searchTerm}%`);
+  // 검색 조건 적용 (상호명 기준: product_name과 store_name에서 검색)
+  if (searchTerm) {
+    query = query.or(`product_name.ilike.%${searchTerm}%,store_name.ilike.%${searchTerm}%`);
   }
 
   // 플랫폼 필터링 적용
