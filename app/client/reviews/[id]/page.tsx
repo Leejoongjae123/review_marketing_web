@@ -37,6 +37,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, Eye, Pencil, X } from "lucide-react";
 import Image from "next/image";
@@ -724,10 +731,11 @@ export default function ReviewDetailPage() {
   console.log("quotas with status: ", quotas.map(q => ({ id: q.id, number: q.quotaNumber, status: q.status })));
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">리뷰 상세 정보</h1>
-      </div>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">리뷰 상세 정보</h1>
+        </div>
 
       <div className="space-y-6 w-full">
         <div className="grid grid-cols-2 gap-4">
@@ -1008,7 +1016,8 @@ export default function ReviewDetailPage() {
 
                         {/* 상태 */}
                         <TableCell className="text-center">
-                          {quota?.status === 'unavailable' ? (
+                          {quota?.status === 'unavailable' || 
+                           (quota.status !== 'reserved' && quota.status !== 'complete' && quota.status !== 'available') ? (
                             <div className="flex items-center justify-center">
                               <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-500">
                                 미오픈
@@ -1060,18 +1069,12 @@ export default function ReviewDetailPage() {
                               </div>
                             </div>
                           ) : quota.status === 'available' ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className=""
-                              onClick={() => handleReserveSlot(quota)}
-                              disabled={
-                                (formData.platform === "영수증리뷰" || formData.platform === "구글") 
-                                  ? (dailyLimitStatus && dailyLimitStatus.count >= 5) || userReservationCount >= 5
-                                  : userReservationCount >= 5
-                              }
-                            >
-                              {(formData.platform === "영수증리뷰" || formData.platform === "구글") 
+                            (() => {
+                              const isDisabled = (formData.platform === "영수증리뷰" || formData.platform === "구글") 
+                                ? (dailyLimitStatus && dailyLimitStatus.count >= 5) || userReservationCount >= 5
+                                : userReservationCount >= 5;
+                              
+                              const buttonText = (formData.platform === "영수증리뷰" || formData.platform === "구글") 
                                 ? (dailyLimitStatus && dailyLimitStatus.count >= 5) 
                                   ? "일일 한도 초과"
                                   : userReservationCount >= 5
@@ -1079,9 +1082,20 @@ export default function ReviewDetailPage() {
                                     : "리뷰 신청"
                                 : userReservationCount >= 5
                                   ? "리뷰 한도 초과"
-                                  : "리뷰 신청"
-                              }
-                            </Button>
+                                  : "리뷰 신청";
+
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isDisabled}
+                                  onClick={() => !isDisabled && handleReserveSlot(quota)}
+                                  className=""
+                                >
+                                  {buttonText}
+                                </Button>
+                              );
+                            })()
                           ) : (
                             <span className="text-gray-400 text-sm">
                               미오픈
@@ -1101,16 +1115,23 @@ export default function ReviewDetailPage() {
                                 {quota.status === 'complete' ? "제출 내역 수정" : "리뷰 작성"}
                               </Button>
                               {quota.status === 'reserved' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleCancelReservation(quota)}
-                                  disabled={isCancellingSlot && cancellingSlotId === quota.id}
-                                  className="text-red-600 border-red-300 hover:bg-red-50"
-                                >
-                                  <X className="w-4 h-4 mr-1" />
-                                  {isCancellingSlot && cancellingSlotId === quota.id ? "취소 중..." : "신청 취소"}
-                                </Button>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleCancelReservation(quota)}
+                                      disabled={isCancellingSlot && cancellingSlotId === quota.id}
+                                      className="text-red-600 border-red-300 hover:bg-red-50"
+                                    >
+                                      <X className="w-4 h-4 mr-1" />
+                                      {isCancellingSlot && cancellingSlotId === quota.id ? "취소 중..." : "신청 취소"}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>리뷰신청을 잘못하였을경우 상태를 다시 활성화하기 위해 취소버튼을 꼭 눌러주세요</p>
+                                  </TooltipContent>
+                                </Tooltip>
                               )}
                             </div>
                           ) : (
@@ -1141,11 +1162,22 @@ export default function ReviewDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>리뷰 신청 확인</AlertDialogTitle>
-            <AlertDialogDescription>
-              {selectedSlot &&
-                `구좌 #${selectedSlot.quotaNumber}에 대한 리뷰를 신청하시겠습니까?`}
-              <br />
-              신청 후에는 취소가 어려울 수 있습니다.
+            <AlertDialogDescription className="space-y-3">
+              <div>
+                {selectedSlot &&
+                  `구좌 #${selectedSlot.quotaNumber}에 대한 리뷰를 신청하시겠습니까?`}
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-orange-600 mb-2">
+                  ⚠️ 신청 전 확인사항
+                </p>
+                <p className="text-sm text-gray-700">
+                  리뷰신청은 꼭 리뷰작성이 가능할때 눌러주세요
+                </p>
+              </div>
+              <div className="text-sm text-gray-600">
+                신청 후에는 취소가 어려울 수 있습니다.
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1183,5 +1215,6 @@ export default function ReviewDetailPage() {
         missingFields={missingProfileFields}
       />
     </div>
+    </TooltipProvider>
   );
 }
