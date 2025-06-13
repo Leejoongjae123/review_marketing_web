@@ -299,7 +299,7 @@ function LexicalEditorComponent({ contents, setContents }) {
   }, [safeContents]);
 
   return (
-    <div className="editor-container max-w-4xl mx-auto mt-8 border rounded-lg shadow-lg">
+    <div className="editor-container w-full mt-8 border rounded-lg shadow-lg">
       <LexicalComposer initialConfig={initialConfig}>
         <ToolbarPlugin />
         <div className="editor-inner relative">

@@ -13,6 +13,19 @@ export async function GET(request: Request) {
     const processedPage = parseInt(url.searchParams.get('processedPage') || '1');
     const pageSize = parseInt(url.searchParams.get('pageSize') || '10');
     
+    // 검색 및 필터 파라미터 추출
+    const pendingSearch = url.searchParams.get('pendingSearch') || '';
+    const pendingCategory = url.searchParams.get('pendingCategory') || 'name';
+    const processedSearch = url.searchParams.get('processedSearch') || '';
+    const processedCategory = url.searchParams.get('processedCategory') || 'name';
+    const processedStatus = url.searchParams.get('processedStatus') || 'all';
+    
+    console.log('API 파라미터 디버깅:', {
+      processedStatus,
+      processedSearch,
+      processedCategory
+    });
+    
     // 권한 체크
     const { data: user } = await supabase.auth.getUser();
     if (!user?.user) {
@@ -30,29 +43,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 });
     }
     
-    // 각 상태별 총 항목 수 조회
-    const { count: pendingCount } = await supabase
-      .from('slot_submissions')
-      .select('*', { count: 'exact', head: true })
-      .eq('payment_status', 'pending');
-    
-    const { count: processingCount } = await supabase
-      .from('slot_submissions')
-      .select('*', { count: 'exact', head: true })
-      .eq('payment_status', 'processing');
-    
-    const { count: processedCount } = await supabase
-      .from('slot_submissions')
-      .select('*', { count: 'exact', head: true })
-      .in('payment_status', ['completed', 'failed']);
-    
-    // 페이지네이션 범위 계산
-    const pendingStart = (pendingPage - 1) * pageSize;
-    const processingStart = (processingPage - 1) * pageSize;
-    const processedStart = (processedPage - 1) * pageSize;
-    
-    // 미정산(pending) 데이터 조회
-    const { data: pendingSubmissions, error: pendingError } = await supabase
+    // 미정산 데이터 조회 (검색 조건 포함)
+    let pendingQuery = supabase
       .from('slot_submissions')
       .select(`
         id,
@@ -72,13 +64,96 @@ export async function GET(request: Request) {
         approval,
         reason
       `)
-      .eq('payment_status', 'pending')
-      .order('submitted_at', { ascending: false })
-      .range(pendingStart, pendingStart + pageSize - 1);
+      .eq('payment_status', 'pending');
+
+    // 미정산 검색 조건 적용
+    if (pendingSearch) {
+      if (pendingCategory === 'name') {
+        pendingQuery = pendingQuery.ilike('name', `%${pendingSearch}%`);
+      } else if (pendingCategory === 'all') {
+        pendingQuery = pendingQuery.or(`name.ilike.%${pendingSearch}%`);
+      }
+    }
+
+    const { data: allPendingSubmissions, error: pendingError } = await pendingQuery
+      .order('payment_created_at', { ascending: false });
     
     if (pendingError) {
       return NextResponse.json({ error: '미정산 데이터 조회 실패', details: pendingError }, { status: 500 });
     }
+
+    // 은행/계좌번호 검색을 위해 프로필 정보 조회
+    let filteredPendingSubmissions = allPendingSubmissions || [];
+    
+    if (pendingSearch && (pendingCategory === 'bank' || pendingCategory === 'accountNumber' || pendingCategory === 'all')) {
+      const userIds = (allPendingSubmissions || []).map(s => s.user_id).filter(Boolean);
+      
+      if (userIds.length > 0) {
+        const { data: profilesForSearch } = await supabase
+          .from('profiles')
+          .select('id, bank_name, account_number')
+          .in('id', userIds);
+
+        const profilesMapForSearch = (profilesForSearch || []).reduce((acc: {[key: string]: any}, profile) => {
+          acc[profile.id] = profile;
+          return acc;
+        }, {});
+
+        filteredPendingSubmissions = (allPendingSubmissions || []).filter(submission => {
+          const profile = profilesMapForSearch[submission.user_id] || {};
+          
+          if (pendingCategory === 'bank') {
+            return profile.bank_name && profile.bank_name.toLowerCase().includes(pendingSearch.toLowerCase());
+          } else if (pendingCategory === 'accountNumber') {
+            return profile.account_number && profile.account_number.includes(pendingSearch);
+          } else if (pendingCategory === 'all') {
+            return submission.name.toLowerCase().includes(pendingSearch.toLowerCase()) ||
+                   (profile.bank_name && profile.bank_name.toLowerCase().includes(pendingSearch.toLowerCase())) ||
+                   (profile.account_number && profile.account_number.includes(pendingSearch));
+          }
+          return true;
+        });
+      }
+    }
+
+    const pendingCount = filteredPendingSubmissions.length;
+    const pendingStart = (pendingPage - 1) * pageSize;
+    const paginatedPendingSubmissions = filteredPendingSubmissions.slice(pendingStart, pendingStart + pageSize);
+    
+    const { count: processingCount } = await supabase
+      .from('slot_submissions')
+      .select('*', { count: 'exact', head: true })
+      .eq('payment_status', 'processing');
+    
+    // 처리된 결제 카운트 쿼리 (상태 필터 적용)
+    let processedCountQuery = supabase
+      .from('slot_submissions')
+      .select('*', { count: 'exact', head: true });
+    
+    if (processedStatus === 'completed') {
+      processedCountQuery = processedCountQuery.eq('payment_status', 'completed');
+    } else if (processedStatus === 'rejected' || processedStatus === 'failed') {
+      processedCountQuery = processedCountQuery.in('payment_status', ['failed', 'rejected']);
+    } else {
+      processedCountQuery = processedCountQuery.in('payment_status', ['completed', 'failed', 'rejected']);
+    }
+    
+    // 처리된 결제 검색 조건 적용 (카운트용)
+    if (processedSearch && processedCategory !== 'bank' && processedCategory !== 'accountNumber') {
+      if (processedCategory === 'name') {
+        processedCountQuery = processedCountQuery.ilike('name', `%${processedSearch}%`);
+      } else if (processedCategory === 'all') {
+        processedCountQuery = processedCountQuery.or(`name.ilike.%${processedSearch}%`);
+      }
+    }
+    
+    const { count: processedCount } = await processedCountQuery;
+    
+    // 페이지네이션 범위 계산
+    const processingStart = (processingPage - 1) * pageSize;
+    const processedStart = (processedPage - 1) * pageSize;
+    
+
 
     // 처리중(processing) 데이터 조회
     const { data: processingSubmissions, error: processingError } = await supabase
@@ -102,7 +177,7 @@ export async function GET(request: Request) {
         reason
       `)
       .eq('payment_status', 'processing')
-      .order('submitted_at', { ascending: false })
+      .order('payment_created_at', { ascending: false })
       .range(processingStart, processingStart + pageSize - 1);
     
     if (processingError) {
@@ -110,7 +185,7 @@ export async function GET(request: Request) {
     }
     
     // 처리완료(completed) 또는 실패(failed) 데이터 조회
-    const { data: processedSubmissions, error: processedError } = await supabase
+    let processedQuery = supabase
       .from('slot_submissions')
       .select(`
         id,
@@ -129,20 +204,76 @@ export async function GET(request: Request) {
         updated_at,
         approval,
         reason
-      `)
-      .in('payment_status', ['completed', 'failed'])
-      .order('payment_processed_at', { ascending: false })
-      .range(processedStart, processedStart + pageSize - 1);
+      `);
+    
+    // 상태 필터 적용
+    if (processedStatus === 'completed') {
+      processedQuery = processedQuery.eq('payment_status', 'completed');
+    } else if (processedStatus === 'failed') {
+      processedQuery = processedQuery.eq('payment_status', 'failed');
+    } else {
+      // 전체 조회 시 completed와 failed만 가져오기
+      processedQuery = processedQuery.in('payment_status', ['completed', 'failed']);
+    }
+    
+    // 처리된 결제 검색 조건 적용
+    if (processedSearch) {
+      if (processedCategory === 'name') {
+        processedQuery = processedQuery.ilike('name', `%${processedSearch}%`);
+      } else if (processedCategory === 'all') {
+        processedQuery = processedQuery.or(`name.ilike.%${processedSearch}%`);
+      }
+    }
+    
+    const { data: allProcessedSubmissions, error: processedError } = await processedQuery
+      .order('payment_created_at', { ascending: false });
     
     if (processedError) {
       return NextResponse.json({ error: '처리완료 데이터 조회 실패', details: processedError }, { status: 500 });
     }
 
+    // 처리된 결제에서 은행/계좌번호 검색을 위한 필터링
+    let filteredProcessedSubmissions = allProcessedSubmissions || [];
+    
+    if (processedSearch && (processedCategory === 'bank' || processedCategory === 'accountNumber' || processedCategory === 'all')) {
+      const processedUserIds = (allProcessedSubmissions || []).map(s => s.user_id).filter(Boolean);
+      
+      if (processedUserIds.length > 0) {
+        const { data: processedProfilesForSearch } = await supabase
+          .from('profiles')
+          .select('id, bank_name, account_number')
+          .in('id', processedUserIds);
+
+        const processedProfilesMapForSearch = (processedProfilesForSearch || []).reduce((acc: {[key: string]: any}, profile) => {
+          acc[profile.id] = profile;
+          return acc;
+        }, {});
+
+        filteredProcessedSubmissions = (allProcessedSubmissions || []).filter(submission => {
+          const profile = processedProfilesMapForSearch[submission.user_id] || {};
+          
+          if (processedCategory === 'bank') {
+            return profile.bank_name && profile.bank_name.toLowerCase().includes(processedSearch.toLowerCase());
+          } else if (processedCategory === 'accountNumber') {
+            return profile.account_number && profile.account_number.includes(processedSearch);
+          } else if (processedCategory === 'all') {
+            return submission.name.toLowerCase().includes(processedSearch.toLowerCase()) ||
+                   (profile.bank_name && profile.bank_name.toLowerCase().includes(processedSearch.toLowerCase())) ||
+                   (profile.account_number && profile.account_number.includes(processedSearch));
+          }
+          return true;
+        });
+      }
+    }
+
+    const actualProcessedCount = filteredProcessedSubmissions.length;
+    const paginatedProcessedSubmissions = filteredProcessedSubmissions.slice(processedStart, processedStart + pageSize);
+
     // 모든 사용자 ID 수집
     const allUserIds = [
-      ...(pendingSubmissions || []).map(s => s.user_id),
+      ...(paginatedPendingSubmissions || []).map(s => s.user_id),
       ...(processingSubmissions || []).map(s => s.user_id),
-      ...(processedSubmissions || []).map(s => s.user_id)
+      ...(paginatedProcessedSubmissions || []).map(s => s.user_id)
     ].filter(Boolean);
 
     // 고유 사용자 ID만 추출
@@ -178,14 +309,14 @@ export async function GET(request: Request) {
     };
 
     // 각 데이터 세트 매핑
-    const mappedPendingData = (pendingSubmissions || []).map(mapToPaymentItem);
+    const mappedPendingData = (paginatedPendingSubmissions || []).map(mapToPaymentItem);
     const mappedProcessingData = (processingSubmissions || []).map(mapToPaymentItem);
-    const mappedProcessedData = (processedSubmissions || []).map(mapToPaymentItem);
+    const mappedProcessedData = (paginatedProcessedSubmissions || []).map(mapToPaymentItem);
     
     // 총 페이지 수 계산
     const pendingTotalPages = Math.ceil((pendingCount || 0) / pageSize);
     const processingTotalPages = Math.ceil((processingCount || 0) / pageSize);
-    const processedTotalPages = Math.ceil((processedCount || 0) / pageSize);
+    const processedTotalPages = Math.ceil((actualProcessedCount || 0) / pageSize);
     
     return NextResponse.json({
       pending: {
@@ -206,10 +337,10 @@ export async function GET(request: Request) {
         data: mappedProcessedData,
         page: processedPage,
         pageSize,
-        totalCount: processedCount || 0,
+        totalCount: actualProcessedCount || 0,
         totalPages: processedTotalPages
       },
-      totalCount: (pendingCount || 0) + (processingCount || 0) + (processedCount || 0)
+      totalCount: (pendingCount || 0) + (processingCount || 0) + (actualProcessedCount || 0)
     });
     
   } catch (error) {

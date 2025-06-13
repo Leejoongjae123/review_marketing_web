@@ -355,6 +355,53 @@ export default function ReviewDetailPage() {
     }
   };
 
+  // 리뷰 신청 완료 알림톡 발송
+  const sendReviewApplicationAlimtalk = async (): Promise<void> => {
+    try {
+      // 현재 사용자 정보 가져오기
+      const userResponse = await fetch("/api/user");
+      const userData = await userResponse.json();
+
+      if (!userResponse.ok || !userData.user || !userData.user.phone) {
+        console.log("사용자 전화번호 정보를 가져올 수 없습니다.");
+        return;
+      }
+
+      const phoneNumber = userData.user.phone;
+      const subject = "알림톡톡";
+      const message = `신청하신 리뷰의 마감 기한이 오늘까지입니다!
+소중한 리뷰, 꼭 부탁드립니다
+
+이미지 업로드 시
+닉네임이 보이도록 캡처하는 것 잊지 마세요!
+
+▼지금 바로 리뷰 남기러 가기`;
+
+      // 알림톡 발송 API 호출
+      const alimtalkResponse = await fetch("/api/send-alimtalk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone_number: phoneNumber,
+          subject,
+          message,
+        }),
+      });
+
+      const alimtalkResult = await alimtalkResponse.json();
+
+      if (alimtalkResponse.ok) {
+        console.log("알림톡 발송 성공:", alimtalkResult);
+      } else {
+        console.log("알림톡 발송 실패:", alimtalkResult.error);
+      }
+    } catch (error) {
+      console.log("알림톡 발송 중 오류 발생");
+    }
+  };
+
   // 프로필 정보 검증 함수
   const validateProfileInfo = async (): Promise<boolean> => {
     try {
@@ -508,6 +555,9 @@ export default function ReviewDetailPage() {
 
       // 일일 제한 상태 새로고침
       await checkDailyLimit();
+
+      // 리뷰 신청 완료 알림톡 발송
+      await sendReviewApplicationAlimtalk();
 
       setIsReservationDialogOpen(false);
     } catch (error) {

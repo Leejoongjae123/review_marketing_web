@@ -1014,12 +1014,8 @@ export default function AddReviewPage() {
                       {/* 이미지 셀 */}
                       <TableCell className="border-r">
                         <div 
-                          className={`min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors cursor-pointer flex flex-col items-center justify-center ${
-                            quota.status === 'available' 
-                              ? 'border-gray-300 hover:border-primary' 
-                              : 'border-gray-200 cursor-not-allowed bg-gray-50'
-                          }`}
-                          onClick={() => quota.status === 'available' && handleAddQuotaFile(quota.id, 'images')}
+                          className="min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors cursor-pointer flex flex-col items-center justify-center border-gray-300 hover:border-primary"
+                          onClick={() => handleAddQuotaFile(quota.id, 'images')}
                         >
                           <input
                             type="file"
@@ -1030,7 +1026,6 @@ export default function AddReviewPage() {
                             accept="image/*"
                             multiple
                             onChange={(e) => handleQuotaImageChange(quota.id, 'images', e)}
-                            disabled={quota.status === 'unavailable'}
                           />
                           
                           {quota.images.length > 0 ? (
@@ -1045,30 +1040,24 @@ export default function AddReviewPage() {
                                       className="object-cover"
                                     />
                                   </div>
-                                  {quota.status === 'available' && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleRemoveQuotaFile(quota.id, 'images', imageIndex);
-                                      }}
-                                      className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                    >
-                                      <X className="h-2 w-2" />
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveQuotaFile(quota.id, 'images', imageIndex);
+                                    }}
+                                    className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                  >
+                                    <X className="h-2 w-2" />
+                                  </button>
                                 </div>
                               ))}
                             </div>
                           ) : (
                             <div className="text-center">
-                              <Plus className={`h-6 w-6 mx-auto mb-1 ${
-                                quota.status === 'available' ? 'text-gray-400' : 'text-gray-300'
-                              }`} />
-                              <span className={`text-xs ${
-                                quota.status === 'available' ? 'text-gray-500' : 'text-gray-400'
-                              }`}>
-                                {quota.status === 'available' ? '이미지 첨부' : '비활성'}
+                              <Plus className="h-6 w-6 mx-auto mb-1 text-gray-400" />
+                              <span className="text-xs text-gray-500">
+                                이미지 첨부
                               </span>
                             </div>
                           )}
@@ -1078,12 +1067,8 @@ export default function AddReviewPage() {
                       {/* 영수증 셀 */}
                       <TableCell className="border-r">
                         <div 
-                          className={`min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors cursor-pointer flex flex-col items-center justify-center ${
-                            quota.status === 'available' 
-                              ? 'border-gray-300 hover:border-primary' 
-                              : 'border-gray-200 cursor-not-allowed bg-gray-50'
-                          }`}
-                          onClick={() => quota.status === 'available' && handleAddQuotaFile(quota.id, 'receipts')}
+                          className="min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors cursor-pointer flex flex-col items-center justify-center border-gray-300 hover:border-primary"
+                          onClick={() => handleAddQuotaFile(quota.id, 'receipts')}
                         >
                           <input
                             type="file"
@@ -1094,7 +1079,6 @@ export default function AddReviewPage() {
                             accept="image/*"
                             multiple
                             onChange={(e) => handleQuotaImageChange(quota.id, 'receipts', e)}
-                            disabled={quota.status === 'unavailable'}
                           />
                           
                           {quota.receipts.length > 0 ? (
@@ -1109,30 +1093,24 @@ export default function AddReviewPage() {
                                       className="object-cover"
                                     />
                                   </div>
-                                  {quota.status === 'available' && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleRemoveQuotaFile(quota.id, 'receipts', receiptIndex);
-                                      }}
-                                      className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                    >
-                                      <X className="h-2 w-2" />
-                                    </button>
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveQuotaFile(quota.id, 'receipts', receiptIndex);
+                                    }}
+                                    className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                  >
+                                    <X className="h-2 w-2" />
+                                  </button>
                                 </div>
                               ))}
                             </div>
                           ) : (
                             <div className="text-center">
-                              <Plus className={`h-6 w-6 mx-auto mb-1 ${
-                                quota.status === 'available' ? 'text-gray-400' : 'text-gray-300'
-                              }`} />
-                              <span className={`text-xs ${
-                                quota.status === 'available' ? 'text-gray-500' : 'text-gray-400'
-                              }`}>
-                                {quota.status === 'available' ? '영수증 첨부' : '비활성'}
+                              <Plus className="h-6 w-6 mx-auto mb-1 text-gray-400" />
+                              <span className="text-xs text-gray-500">
+                                영수증 첨부
                               </span>
                             </div>
                           )}

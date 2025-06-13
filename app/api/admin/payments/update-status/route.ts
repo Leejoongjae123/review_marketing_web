@@ -13,13 +13,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // status 값을 데이터베이스의 허용 값으로 변환
-    let dbStatus = status;
-    if (status === 'rejected') {
-      dbStatus = 'failed';
-    }
-
-    if (!['completed', 'rejected'].includes(status)) {
+    if (!['completed', 'failed', 'rejected'].includes(status)) {
       return NextResponse.json(
         { error: '유효하지 않은 상태값입니다' },
         { status: 400 }
@@ -56,7 +50,7 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabase
         .from('slot_submissions')
         .update({
-          payment_status: dbStatus,
+          payment_status: status,
           payment_processed_at: new Date().toISOString(),
           admin_id: userData.user.id,
           reason: reason,

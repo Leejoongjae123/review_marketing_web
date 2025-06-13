@@ -2,17 +2,18 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft } from "lucide-react";
-import PaymentSearch from "./PaymentSearch";
-import PaymentActions from "./PaymentActions";
-import PaymentTable from "./PaymentTable";
-import { Payment, PaymentFilters, PaymentResponse } from "../types";
+import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Download } from "lucide-react";
+import { Payment, PaymentResponse } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PendingPaymentsTable from './PendingPaymentsTable';
 import ProcessingPaymentsTable from './ProcessingPaymentsTable';
 import ProcessedPaymentsTable from './ProcessedPaymentsTable';
 import PaymentConfirmModal from './PaymentConfirmModal';
+import PendingPaymentSearch from './PendingPaymentSearch';
+import ProcessedPaymentSearch from './ProcessedPaymentSearch';
 import { PaymentItem } from '../types';
+import TableLoader from './TableLoader';
+import ExcelDownloadModal from './ExcelDownloadModal';
 
 function PaymentManagementContent() {
   const router = useRouter();
@@ -25,9 +26,14 @@ function PaymentManagementContent() {
   const [selectedPending, setSelectedPending] = useState<string[]>([]);
   const [selectedProcessing, setSelectedProcessing] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [processingLoading, setProcessingLoading] = useState(false);
+  const [processedLoading, setProcessedLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalType, setModalType] = useState<'complete' | 'reject'>('complete');
   const [paymentReasons, setPaymentReasons] = useState<Record<string, string>>({});
+  const [showExcelModal, setShowExcelModal] = useState(false);
+  const [excelDownloading, setExcelDownloading] = useState(false);
   
   // 페이지네이션 상태
   const [pendingPage, setPendingPage] = useState(1);
@@ -45,42 +51,134 @@ function PaymentManagementContent() {
   const [pageSize] = useState(10);
   
   // 필터 상태
-  const [filters, setFilters] = useState<PaymentFilters>({
+  const [pendingFilters, setPendingFilters] = useState({
     searchTerm: '',
-    searchCategory: 'name',
-    paymentStatus: 'all',
-    startDate: '',
-    endDate: ''
+    searchCategory: 'name'
   });
   
-  // 데이터 조회 함수
-  const fetchPayments = async () => {
-    setLoading(true);
+  const [processedFilters, setProcessedFilters] = useState({
+    searchTerm: '',
+    searchCategory: 'name',
+    statusFilter: 'all'
+  });
+  
+  // 미정산 데이터 조회 함수
+  const fetchPendingPayments = async () => {
+    setPendingLoading(true);
     try {
-      const response = await fetch(`/api/admin/payments?pendingPage=${pendingPage}&processingPage=${processingPage}&processedPage=${processedPage}&pageSize=${pageSize}`);
+      const params = new URLSearchParams({
+        page: pendingPage.toString(),
+        pageSize: pageSize.toString(),
+        type: 'pending'
+      });
+
+      if (pendingFilters.searchTerm) {
+        params.append('search', pendingFilters.searchTerm);
+        params.append('category', pendingFilters.searchCategory);
+      }
+
+      const response = await fetch(`/api/admin/payments/pending?${params.toString()}`);
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.log(`정산 데이터 로딩 실패: ${response.status} - ${errorData.error || '알 수 없는 오류'}`);
+        // 미정산 데이터 로딩 실패
         return;
       }
       
       const data = await response.json();
       
-      // 페이징된 데이터 설정
-      setPendingPayments(data.pending.data || []);
-      setPendingTotalPages(data.pending.totalPages || 1);
-      setPendingTotalCount(data.pending.totalCount || 0);
-      
-      setProcessingPayments(data.processing.data || []);
-      setProcessingTotalPages(data.processing.totalPages || 1);
-      setProcessingTotalCount(data.processing.totalCount || 0);
-      
-      setProcessedPayments(data.processed.data || []);
-      setProcessedTotalPages(data.processed.totalPages || 1);
-      setProcessedTotalCount(data.processed.totalCount || 0);
+      setPendingPayments(data.data || []);
+      setPendingTotalPages(data.totalPages || 1);
+      setPendingTotalCount(data.totalCount || 0);
     } catch (error) {
-      console.log('정산 데이터 로딩 실패', error);
+      // 미정산 데이터 로딩 실패
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  // 처리대기 데이터 조회 함수
+  const fetchProcessingPayments = async () => {
+    setProcessingLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: processingPage.toString(),
+        pageSize: pageSize.toString(),
+        type: 'processing'
+      });
+
+      const response = await fetch(`/api/admin/payments/processing?${params.toString()}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        // 처리대기 데이터 로딩 실패
+        return;
+      }
+      
+      const data = await response.json();
+      
+      setProcessingPayments(data.data || []);
+      setProcessingTotalPages(data.totalPages || 1);
+      setProcessingTotalCount(data.totalCount || 0);
+    } catch (error) {
+      // 처리대기 데이터 로딩 실패
+    } finally {
+      setProcessingLoading(false);
+    }
+  };
+
+  // 처리결과 데이터 조회 함수
+  const fetchProcessedPayments = async (filters?: typeof processedFilters) => {
+    setProcessedLoading(true);
+    try {
+      const currentFilters = filters || processedFilters;
+      const params = new URLSearchParams({
+        page: processedPage.toString(),
+        pageSize: pageSize.toString(),
+        type: 'processed'
+      });
+
+      if (currentFilters.searchTerm) {
+        params.append('search', currentFilters.searchTerm);
+        params.append('category', currentFilters.searchCategory);
+      }
+      if (currentFilters.statusFilter !== 'all') {
+        params.append('status', currentFilters.statusFilter);
+      }
+
+      const response = await fetch(`/api/admin/payments/processed?${params.toString()}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        // 처리결과 데이터 로딩 실패
+        return;
+      }
+      
+      const data = await response.json();
+      
+      setProcessedPayments(data.data || []);
+      setProcessedTotalPages(data.totalPages || 1);
+      setProcessedTotalCount(data.totalCount || 0);
+    } catch (error) {
+      // 처리결과 데이터 로딩 실패
+    } finally {
+      setProcessedLoading(false);
+    }
+  };
+
+  const fetchProcessedPaymentsWithFilters = async (filters: typeof processedFilters) => {
+    await fetchProcessedPayments(filters);
+  };
+
+  // 전체 데이터 조회 함수 (초기 로딩용)
+  const fetchAllPayments = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchPendingPayments(),
+        fetchProcessingPayments(),
+        fetchProcessedPayments()
+      ]);
     } finally {
       setLoading(false);
     }
@@ -108,9 +206,9 @@ function PaymentManagementContent() {
         return;
       }
       
-      // 성공 시 선택 해제 및 데이터 새로고침
+      // 성공 시 선택 해제 및 처리대기 데이터만 새로고침
       setSelectedProcessing([]);
-      await fetchPayments();
+      await fetchProcessingPayments();
       
     } catch (error) {
       // 에러 처리
@@ -140,38 +238,56 @@ function PaymentManagementContent() {
     }
   };
   
-  // 검색 실행
-  const handleSearch = () => {
-    // 검색 시 모든 페이지를 1로 초기화
+  // 미정산 검색 실행
+  const handlePendingSearch = async () => {
     setPendingPage(1);
-    setProcessingPage(1);
+    await fetchPendingPayments();
+  };
+  
+  // 처리결과 검색 실행
+  const handleProcessedSearch = async () => {
     setProcessedPage(1);
-    fetchPayments();
+    await fetchProcessedPayments();
+  };
+
+  // 처리결과 필터 변경 시 상태만 업데이트 (자동 검색 제거)
+  const handleProcessedFiltersChange = async (newFilters: typeof processedFilters) => {
+    setProcessedFilters(newFilters);
+    
+    // 상태 필터가 변경된 경우에만 자동 검색 (상태 버튼 클릭 시)
+    if (newFilters.statusFilter !== processedFilters.statusFilter) {
+      setProcessedPage(1);
+      // 새로운 필터로 즉시 검색 실행
+      await fetchProcessedPaymentsWithFilters(newFilters);
+    }
   };
   
   // 페이지 변경 핸들러
-  const handlePendingPageChange = (page: number) => {
+  const handlePendingPageChange = async (page: number) => {
     setPendingPage(page);
+    await fetchPendingPayments();
   };
   
-  const handleProcessingPageChange = (page: number) => {
+  const handleProcessingPageChange = async (page: number) => {
     setProcessingPage(page);
+    await fetchProcessingPayments();
   };
   
-  const handleProcessedPageChange = (page: number) => {
+  const handleProcessedPageChange = async (page: number) => {
     setProcessedPage(page);
+    await fetchProcessedPayments();
   };
   
   // 초기 데이터 로드
   useEffect(() => {
-    fetchPayments();
-  }, [pendingPage, processingPage, processedPage, pageSize]);
+    fetchAllPayments();
+  }, []);
   
   // URL 파라미터 변경 감지
   useEffect(() => {
     const refreshParam = searchParams.get('refresh');
     if (refreshParam === 'true') {
-      fetchPayments();
+      fetchAllPayments();
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('refresh');
       window.history.replaceState({}, '', newUrl.toString());
@@ -239,17 +355,20 @@ function PaymentManagementContent() {
       });
       
       if (response.ok) {
-        // 데이터 새로고침
-        await fetchPayments();
+        // 처리대기와 처리결과 테이블만 새로고침
+        await Promise.all([
+          fetchProcessingPayments(),
+          fetchProcessedPayments()
+        ]);
         setSelectedProcessing([]);
         setPaymentReasons({});
       } else {
         // 오류 응답 처리
         const errorData = await response.json();
-        console.log(`입금완료 처리 실패: ${response.status}`, errorData);
+        // 입금완료 처리 실패
       }
     } catch (error) {
-      console.log('입금완료 처리 실패', error);
+      // 입금완료 처리 실패
     }
   };
   
@@ -276,35 +395,32 @@ function PaymentManagementContent() {
         },
         body: JSON.stringify({
           paymentIds: selectedProcessing,
-          status: 'rejected',
+          status: 'failed',
           paymentsWithReasons,
         }),
       });
       
       if (response.ok) {
-        // 데이터 새로고침
-        await fetchPayments();
+        // 처리대기와 처리결과 테이블만 새로고침
+        await Promise.all([
+          fetchProcessingPayments(),
+          fetchProcessedPayments()
+        ]);
         setSelectedProcessing([]);
         setPaymentReasons({});
       } else {
         // 오류 응답 처리
         const errorData = await response.json();
-        console.log(`입금불가 처리 실패: ${response.status}`, errorData);
+        // 입금불가 처리 실패
       }
     } catch (error) {
-      console.log('입금불가 처리 실패', error);
+      // 입금불가 처리 실패
     }
   };
   
   // 결제 항목 상태 업데이트 함수
   const handleUpdatePaymentStatus = async (paymentId: string, status: string, reason?: string) => {
     try {
-      // API가 'completed'와 'rejected'만 허용하므로 status 값을 변환
-      let apiStatus = status;
-      if (status === 'failed') {
-        apiStatus = 'rejected';
-      }
-      
       const response = await fetch('/api/admin/payments/update-status', {
         method: 'POST',
         headers: {
@@ -312,37 +428,109 @@ function PaymentManagementContent() {
         },
         body: JSON.stringify({
           paymentIds: [paymentId],
-          status: apiStatus,
+          status: status,
           paymentsWithReasons: [{ id: paymentId, reason: reason || '' }],
         }),
       });
       
       if (response.ok) {
-        // 데이터 새로고침
-        await fetchPayments();
+        // 처리결과 테이블만 새로고침
+        await fetchProcessedPayments();
       } else {
         // 오류 응답 처리
         const errorData = await response.json();
-        console.log(`상태 업데이트 실패: ${response.status}`, errorData);
+        // 상태 업데이트 실패
       }
     } catch (error) {
-      console.log('상태 업데이트 실패', error);
+      // 상태 업데이트 실패
+    }
+  };
+
+  // 엑셀 다운로드 함수
+  const handleExcelDownload = async (downloadType: 'current' | 'all') => {
+    setExcelDownloading(true);
+    setShowExcelModal(false);
+    
+    try {
+      let url = `/api/admin/payments/excel?type=${downloadType}`;
+      
+      // 현재 화면 데이터인 경우 데이터를 파라미터로 전달
+      if (downloadType === 'current') {
+        // 데이터 구조를 엑셀 API에서 기대하는 형태로 변환
+        const formattedPendingData = pendingPayments.map(payment => ({
+          id: payment.id,
+          name: payment.name || '정보없음',
+          bank: payment.bank || '정보없음',
+          accountNumber: payment.accountNumber || '정보없음',
+          amount: payment.amount || 0,
+          createdAt: payment.createdAt,
+          status: payment.status
+        }));
+        
+        const formattedProcessedData = processedPayments.map(payment => ({
+          id: payment.id,
+          name: payment.name || '정보없음',
+          bank: payment.bank || '정보없음',
+          accountNumber: payment.accountNumber || '정보없음',
+          amount: payment.amount || 0,
+          createdAt: payment.createdAt,
+          updatedAt: payment.updatedAt,
+          status: payment.status,
+          reason: payment.reason || ''
+        }));
+        
+        const pendingData = encodeURIComponent(JSON.stringify(formattedPendingData));
+        const processedData = encodeURIComponent(JSON.stringify(formattedProcessedData));
+        url += `&pendingData=${pendingData}&processedData=${processedData}`;
+      }
+      
+      // 파일 다운로드
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        // 엑셀 다운로드 실패
+        return;
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      
+      // 파일명 설정
+      const today = new Date().toISOString().split('T')[0];
+      link.download = `정산관리_${today}.xlsx`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      
+    } catch (error) {
+      // 엑셀 다운로드 오류
+    } finally {
+      setExcelDownloading(false);
     }
   };
   
-  return (
+      return (
     <div className="space-y-6 w-full h-full">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">정산관리</h1>
-        <p className="text-muted-foreground">플랫폼의 정산을 관리합니다.</p>
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight">정산관리</h1>
+          <p className="text-muted-foreground">플랫폼의 정산을 관리합니다.</p>
+        </div>
+        <Button
+          onClick={() => setShowExcelModal(true)}
+          disabled={loading || excelDownloading}
+          className="bg-green-600 hover:bg-green-700"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          {excelDownloading ? '다운로드 중...' : '엑셀 다운로드'}
+        </Button>
       </div>
       
-      {/* 검색 필터 */}
-      <PaymentSearch 
-        filters={filters}
-        onFiltersChange={setFilters}
-        onSearch={handleSearch}
-      />
+
       
       {/* 상단 두 개의 테이블 (세로 배치) */}
       <div className="space-y-1">
@@ -357,15 +545,25 @@ function PaymentManagementContent() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-0  min-h-[200px]">
-            <PendingPaymentsTable
-              payments={pendingPayments}
-              selectedItems={selectedPending}
-              onSelectionChange={setSelectedPending}
-              currentPage={pendingPage}
-              totalPages={pendingTotalPages}
-              totalCount={pendingTotalCount}
-              onPageChange={handlePendingPageChange}
+            <PendingPaymentSearch
+              filters={pendingFilters}
+              onFiltersChange={setPendingFilters}
+              onSearch={handlePendingSearch}
+              isLoading={pendingLoading}
             />
+            {(loading || pendingLoading) ? (
+              <TableLoader columns={['', '이름', '은행', '계좌번호', '금액', '신청일']} />
+            ) : (
+              <PendingPaymentsTable
+                payments={pendingPayments}
+                selectedItems={selectedPending}
+                onSelectionChange={setSelectedPending}
+                currentPage={pendingPage}
+                totalPages={pendingTotalPages}
+                totalCount={pendingTotalCount}
+                onPageChange={handlePendingPageChange}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -422,16 +620,20 @@ function PaymentManagementContent() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-0 min-h-[200px]">
-            <ProcessingPaymentsTable
-              payments={processingPayments}
-              selectedItems={selectedProcessing}
-              onSelectionChange={setSelectedProcessing}
-              currentPage={processingPage}
-              totalPages={processingTotalPages}
-              totalCount={processingTotalCount}
-              onPageChange={handleProcessingPageChange}
-              onReasonChange={handleReasonChange}
-            />
+            {(loading || processingLoading) ? (
+              <TableLoader columns={['', '이름', '은행', '계좌번호', '금액', '신청일', '사유']} />
+            ) : (
+              <ProcessingPaymentsTable
+                payments={processingPayments}
+                selectedItems={selectedProcessing}
+                onSelectionChange={setSelectedProcessing}
+                currentPage={processingPage}
+                totalPages={processingTotalPages}
+                totalCount={processingTotalCount}
+                onPageChange={handleProcessingPageChange}
+                onReasonChange={handleReasonChange}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -447,14 +649,24 @@ function PaymentManagementContent() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-0 min-h-[200px]">
-          <ProcessedPaymentsTable 
-            payments={processedPayments} 
-            currentPage={processedPage}
-            totalPages={processedTotalPages}
-            totalCount={processedTotalCount}
-            onPageChange={handleProcessedPageChange}
-            onUpdateStatus={handleUpdatePaymentStatus}
+          <ProcessedPaymentSearch
+            filters={processedFilters}
+            onFiltersChange={handleProcessedFiltersChange}
+            onSearch={handleProcessedSearch}
+            isLoading={processedLoading}
           />
+          {(loading || processedLoading) ? (
+            <TableLoader columns={['이름', '은행', '계좌번호', '금액', '신청일', '처리일자', '상태', '사유', '관리']} />
+          ) : (
+            <ProcessedPaymentsTable 
+              payments={processedPayments} 
+              currentPage={processedPage}
+              totalPages={processedTotalPages}
+              totalCount={processedTotalCount}
+              onPageChange={handleProcessedPageChange}
+              onUpdateStatus={handleUpdatePaymentStatus}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -465,6 +677,14 @@ function PaymentManagementContent() {
         onConfirm={modalType === 'complete' ? confirmCompletePayment : confirmRejectPayment}
         payments={processingPayments.filter(p => selectedProcessing.includes(p.id))}
         type={modalType}
+      />
+
+      {/* 엑셀 다운로드 모달 */}
+      <ExcelDownloadModal
+        isOpen={showExcelModal}
+        onClose={() => setShowExcelModal(false)}
+        onDownload={handleExcelDownload}
+        isLoading={excelDownloading}
       />
     </div>
   );

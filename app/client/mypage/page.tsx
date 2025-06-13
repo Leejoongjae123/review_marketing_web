@@ -64,6 +64,7 @@ interface SlotSubmissionActivity {
   payment_status: string;
   slot_number: number;
   review_fee: number;
+  reason: string;
 }
 
 // 플랫폼 필터 타입 정의
@@ -183,7 +184,19 @@ export default function MypagePage() {
       let query = supabase
         .from('slot_submissions')
         .select(`
-          *,
+          id,
+          slot_id,
+          user_id,
+          name,
+          phone,
+          nickname,
+          user_images,
+          submitted_at,
+          updated_at,
+          review_id,
+          approval,
+          payment_status,
+          reason,
           reviews!inner(
             title,
             platform,
@@ -258,7 +271,8 @@ export default function MypagePage() {
         review_status: item.reviews.status,
         payment_status: item.payment_status || 'pending',
         slot_number: item.slots.slot_number,
-        review_fee: item.reviews.review_fee || 0
+        review_fee: item.reviews.review_fee || 0,
+        reason: item.reason || ''
       }));
 
       setActivities(formattedActivities);
@@ -332,7 +346,7 @@ export default function MypagePage() {
         bank_name: userInfo.bank_name || null,
         account_number: userInfo.account_number || null,
         citizen_no: fullSsn || null,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       const { error: updateError } = await supabase
@@ -750,6 +764,12 @@ export default function MypagePage() {
                         <span className={getPaymentStatusStyle(selectedActivity.payment_status)}>
                           {getPaymentStatusText(selectedActivity.payment_status)}
                         </span>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">사유</Label>
+                      <div className="mt-1">
+                        <p className="mt-1">{selectedActivity.reason}</p>
                       </div>
                     </div>
                     <div>

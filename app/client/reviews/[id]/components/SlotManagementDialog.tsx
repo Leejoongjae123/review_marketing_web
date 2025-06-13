@@ -529,7 +529,7 @@ export default function SlotManagementDialog({
 
                 {/* 리뷰 이미지 관리 */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">리뷰 이미지 <span className="text-sm font-normal underline">닉네임이 보이게 또렷하게 첨부 해 주세요</span></h3>
+                  <h3 className="text-lg mb-3">리뷰 이미지 <span className="text-sm font-bold underline text-red-500">리뷰인증시 꼭 닉네임이 보이게 첨부 해 주세요(닉네임 없을시 지급불가)</span></h3>
                   <div className="space-y-4">
                     <div>
                       <input

@@ -89,11 +89,16 @@ export default function ProcessedPaymentsTable({
             입금완료
           </span>
         );
-      case 'rejected':
-      case 'failed': // 기존 데이터 호환성을 위해 유지
+      case 'failed':
         return (
           <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
             입금불가
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">
+            거절됨
           </span>
         );
       default:
@@ -212,7 +217,7 @@ export default function ProcessedPaymentsTable({
           <span className="text-xs text-muted-foreground">총 {totalCount}건 중 {payments.length}건 표시</span>
           <div className="flex gap-4 text-xs text-muted-foreground">
             <span>입금완료: {payments.filter(p => p.status === 'completed').length}건</span>
-            <span>입금불가: {payments.filter(p => p.status === 'rejected' || p.status === 'failed').length}건</span>
+            <span>입금불가: {payments.filter(p => p.status === 'failed').length}건</span>
           </div>
         </div>
         
@@ -267,7 +272,8 @@ export default function ProcessedPaymentsTable({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="completed">입금완료</SelectItem>
-                    <SelectItem value="rejected">입금불가</SelectItem>
+                    <SelectItem value="failed">입금불가</SelectItem>
+                    <SelectItem value="rejected">거절됨</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
