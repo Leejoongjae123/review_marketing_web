@@ -10,13 +10,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PaymentItem } from '../types';
+import { Payment } from '../types';
 
 interface PaymentConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  payments: PaymentItem[];
+  payments: Payment[];
   type: 'complete' | 'reject';
 }
 
@@ -42,8 +42,8 @@ const PaymentConfirmModal: React.FC<PaymentConfirmModalProps> = ({
             <div className="mt-4 max-h-60 overflow-y-auto">
               {payments.map((payment) => (
                 <div key={payment.id} className="flex justify-between items-center py-1 border-b last:border-b-0">
-                  <span className="font-medium">{payment.name} ({payment.bank})</span>
-                  <span className="text-right text-gray-700">{payment.amount.toLocaleString()}원</span>
+                  <span className="font-medium">{payment.name} ({payment.bank || payment.user_bank_name || '-'})</span>
+                  <span className="text-right text-gray-700">{(payment.amount || payment.payment_amount || 0).toLocaleString()}원</span>
                 </div>
               ))}
             </div>

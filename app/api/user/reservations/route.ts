@@ -55,7 +55,7 @@ export async function GET() {
         id: res.id,
         review_id: res.review_id,
         status: res.status,
-        platform: res.reviews?.platform
+        platform: Array.isArray(res.reviews) ? res.reviews[0]?.platform : (res.reviews as any)?.platform
       }))));
     }
     

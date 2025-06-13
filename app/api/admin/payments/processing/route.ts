@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
-import { PaymentItem } from '@/app/admin/payment/types';
+import { Payment } from '@/app/admin/payment/types';
 
 export async function GET(request: Request) {
   try {
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     
     // 사용자 ID 수집
     const userIds = (processingSubmissions || []).map(s => s.user_id).filter(Boolean);
-    const uniqueUserIds = [...new Set(userIds)];
+    const uniqueUserIds = Array.from(new Set(userIds));
 
     // 프로필 정보 조회
     const { data: profilesData } = await supabase
@@ -82,25 +82,37 @@ export async function GET(request: Request) {
       return acc;
     }, {});
 
-    // PaymentItem 매핑 함수
-    const mapToPaymentItem = (submission: any): PaymentItem => {
+    // Payment 매핑 함수
+    const mapToPayment = (submission: any): Payment => {
       const profile = profilesMap[submission.user_id] || {};
       
       return {
         id: submission.id,
         name: submission.name,
-        bank: profile.bank_name || '-',
-        accountNumber: profile.account_number || '-',
+        phone: submission.phone,
+        nickname: submission.nickname,
+        user_bank_name: profile.bank_name,
+        user_account_number: profile.account_number,
+        payment_amount: submission.payment_amount,
+        payment_status: submission.payment_status,
+        payment_created_at: submission.submitted_at,
+        payment_processed_at: submission.payment_processed_at,
+        payment_note: submission.payment_note,
+        payment_method: submission.payment_method,
+        reason: submission.reason,
+        admin_id: submission.admin_id,
+        // 호환성을 위한 필드들
         amount: submission.payment_amount,
         status: submission.payment_status,
         createdAt: submission.submitted_at,
         updatedAt: submission.updated_at,
-        reason: submission.reason,
+        bank: profile.bank_name || '-',
+        accountNumber: profile.account_number || '-',
       };
     };
 
     // 데이터 매핑
-    const mappedData = (processingSubmissions || []).map(mapToPaymentItem);
+    const mappedData = (processingSubmissions || []).map(mapToPayment);
     
     // 총 페이지 수 계산
     const totalPages = Math.ceil((totalCount || 0) / pageSize);

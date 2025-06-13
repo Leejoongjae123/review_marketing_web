@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PaymentItem } from '../types';
+import { Payment } from '../types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Edit } from 'lucide-react';
@@ -33,7 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 interface ProcessedPaymentsTableProps {
-  payments: PaymentItem[];
+  payments: Payment[];
   currentPage: number;
   totalPages: number;
   totalCount: number;
@@ -49,15 +49,15 @@ export default function ProcessedPaymentsTable({
   onPageChange,
   onUpdateStatus,
 }: ProcessedPaymentsTableProps) {
-  const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
   const [newReason, setNewReason] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleOpenModal = (payment: PaymentItem) => {
+  const handleOpenModal = (payment: Payment) => {
     setSelectedPayment(payment);
-    setNewStatus(payment.status);
+    setNewStatus(payment.status || payment.payment_status || '');
     setNewReason(payment.reason || '');
     setIsModalOpen(true);
   };
@@ -110,7 +110,7 @@ export default function ProcessedPaymentsTable({
     }
   };
 
-  const formatDateTime = (dateString: string) => {
+  const formatDateTime = (dateString?: string) => {
     if (dateString && !isNaN(new Date(dateString).getTime())) {
       return new Date(dateString).toLocaleDateString('ko-KR', {
         year: 'numeric',
@@ -123,7 +123,7 @@ export default function ProcessedPaymentsTable({
     return '-';
   };
 
-  const formatAmountKRW = (amount: number) => {
+  const formatAmountKRW = (amount?: number) => {
     if (typeof amount === 'number' && !isNaN(amount)) {
       return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount);
     }
@@ -189,12 +189,12 @@ export default function ProcessedPaymentsTable({
             {payments.map((payment) => (
               <TableRow key={payment.id}>
                 <TableCell className="font-medium">{payment.name}</TableCell>
-                <TableCell>{payment.bank}</TableCell>
-                <TableCell>{payment.accountNumber}</TableCell>
-                <TableCell>{formatAmountKRW(payment.amount)}</TableCell>
-                <TableCell>{formatDateTime(payment.createdAt)}</TableCell>
-                <TableCell>{formatDateTime(payment.updatedAt)}</TableCell>
-                <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                <TableCell>{payment.bank || payment.user_bank_name || '-'}</TableCell>
+                <TableCell>{payment.accountNumber || payment.user_account_number || '-'}</TableCell>
+                <TableCell>{formatAmountKRW(payment.amount || payment.payment_amount || 0)}</TableCell>
+                <TableCell>{formatDateTime(payment.createdAt || payment.payment_created_at || '')}</TableCell>
+                <TableCell>{formatDateTime(payment.updatedAt || payment.payment_processed_at || '')}</TableCell>
+                <TableCell>{getStatusBadge(payment.status || payment.payment_status || '')}</TableCell>
                 <TableCell>{payment.reason || '-'}</TableCell>
                 <TableCell>
                   <Button 

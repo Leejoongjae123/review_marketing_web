@@ -12,14 +12,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { PaymentItem } from '../types';
+import { Payment } from '../types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Pagination from "./Pagination";
 
 interface ProcessingPaymentsTableProps {
-  payments: PaymentItem[];
+  payments: Payment[];
   selectedItems: string[];
   onSelectionChange: (selected: string[]) => void;
   currentPage: number;
@@ -135,12 +135,12 @@ export default function ProcessingPaymentsTable({
                   />
                 </TableCell>
                 <TableCell className="font-medium">{payment.name}</TableCell>
-                <TableCell>{payment.bank}</TableCell>
-                <TableCell>{payment.accountNumber}</TableCell>
-                <TableCell>{typeof payment.amount === 'number' && !isNaN(payment.amount) ? new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(payment.amount) : '-'}</TableCell>
+                <TableCell>{payment.user_bank_name || '-'}</TableCell>
+                <TableCell>{payment.user_account_number || '-'}</TableCell>
+                <TableCell>{typeof payment.payment_amount === 'number' && !isNaN(payment.payment_amount) ? new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(payment.payment_amount) : '-'}</TableCell>
                 <TableCell>
-                  {payment.createdAt && !isNaN(new Date(payment.createdAt).getTime()) ? 
-                  new Date(payment.createdAt).toLocaleDateString('ko-KR', {
+                  {payment.payment_created_at && !isNaN(new Date(payment.payment_created_at).getTime()) ? 
+                  new Date(payment.payment_created_at).toLocaleDateString('ko-KR', {
                     year: 'numeric',
                     month: '2-digit', 
                     day: '2-digit',

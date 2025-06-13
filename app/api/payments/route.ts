@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { PaymentResponse } from '@/app/admin/payment/types';
+import { PaymentListResponse } from '@/app/admin/payment/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -84,15 +84,15 @@ export async function GET(request: NextRequest) {
       review_title: item.reviews?.title,
       product_name: item.reviews?.product_name,
       platform: item.reviews?.platform,
-      user_bank_name: null, // 별도 조회 필요
-      user_account_number: null, // 별도 조회 필요
-      admin_name: null // 별도 조회 필요
+      user_bank_name: undefined, // 별도 조회 필요
+      user_account_number: undefined, // 별도 조회 필요
+      admin_name: undefined // 별도 조회 필요
     })) || [];
     
     const totalCount = count || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
     
-    const response: PaymentResponse = {
+    const response: PaymentListResponse = {
       data: payments,
       pagination: {
         page,
