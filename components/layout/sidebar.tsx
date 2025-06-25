@@ -326,7 +326,7 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
             <h3 className="px-7 text-md tracking-tight mb-2">Review WEB</h3>
 
             {/* 역할 선택 셀렉트 박스 */}
-            <div className="px-7">
+            {/* <div className="px-7">
               <Select value={selectedRole} onValueChange={handleRoleChange}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="역할 선택" />
@@ -337,7 +337,7 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
                   <SelectItem value="client">리뷰어</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
           </div>
           <Separator />
           <nav className="flex flex-col gap-2 px-4 flex-1">

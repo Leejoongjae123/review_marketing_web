@@ -9,6 +9,7 @@ export interface Provider {
   id: string
   full_name: string
   email: string
+  company_name?: string
 }
 
 interface MultiProviderSelectorProps {
@@ -168,7 +169,7 @@ export function MultiProviderSelector({
             
             {!loading && searchQuery.trim() === '' && (
               <div className="py-2 px-3 text-xs text-center text-gray-500">
-                광고주 이름을 입력하여 검색하세요. 검색 결과에서 클릭하면 선택됩니다.
+                광고주 이름, 회사명, 이메일로 검색하세요. 검색 결과에서 클릭하면 선택됩니다.
                 <div className="mt-1 text-xs text-gray-400">최대 {maxSelections}개까지 선택 가능합니다.</div>
               </div>
             )}
@@ -194,6 +195,9 @@ export function MultiProviderSelector({
                       />
                       <div className="flex flex-col flex-grow">
                         <span className="font-medium">{provider.full_name}</span>
+                        {provider.company_name && (
+                          <span className="text-sm text-blue-600">{provider.company_name}</span>
+                        )}
                         <span className="text-xs text-gray-500">{provider.email || '이메일 없음'}</span>
                       </div>
                     </div>

@@ -18,6 +18,7 @@ interface DatePickerProps {
   onSelect?: (date: Date | undefined) => void
   placeholder?: string
   className?: string
+  disabled?: (date: Date) => boolean
 }
 
 export function DatePicker({
@@ -25,6 +26,7 @@ export function DatePicker({
   onSelect,
   placeholder = "날짜 선택",
   className,
+  disabled,
 }: DatePickerProps) {
   return (
     <Popover>
@@ -46,7 +48,9 @@ export function DatePicker({
           mode="single"
           selected={selected}
           onSelect={onSelect}
-          initialFocus
+          captionLayout="dropdown"
+          className="rounded-md border shadow-sm"
+          disabled={disabled}
         />
       </PopoverContent>
     </Popover>

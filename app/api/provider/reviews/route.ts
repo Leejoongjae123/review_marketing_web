@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
   const searchTerm = searchParams.get('searchTerm') || '';
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
+  const platformFilter = searchParams.get('platformFilter') || '';
   const page = parseInt(searchParams.get('page') || '1', 10);
   const pageSize = parseInt(searchParams.get('pageSize') || '10', 10);
 
@@ -26,6 +27,8 @@ export async function GET(request: NextRequest) {
         query = query.ilike('title', `%${searchTerm}%`);
       } else if (searchCategory === 'product_name') {
         query = query.ilike('product_name', `%${searchTerm}%`);
+      } else if (searchCategory === 'store_name') {
+        query = query.ilike('store_name', `%${searchTerm}%`);
       } else if (searchCategory === 'author_name') {
         query = query.ilike('author_name', `%${searchTerm}%`);
       } else if (searchCategory === 'content') {
@@ -34,7 +37,15 @@ export async function GET(request: NextRequest) {
         query = query.ilike('platform', `%${searchTerm}%`);
       } else if (searchCategory === 'seller') {
         query = query.ilike('seller', `%${searchTerm}%`);
+      } else {
+        // 기본적으로 제목과 상호명/제품명 모두 검색
+        query = query.or(`title.ilike.%${searchTerm}%,product_name.ilike.%${searchTerm}%,store_name.ilike.%${searchTerm}%`);
       }
+    }
+
+    // 플랫폼 필터링 적용
+    if (platformFilter) {
+      query = query.eq("platform", platformFilter);
     }
 
     // 날짜 필터링 (created_at 컬럼을 기준으로 가정)

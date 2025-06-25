@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false });
   
-  // 검색 조건 적용 (상호명 기준: product_name과 store_name에서 검색)
+  // 검색 조건 적용 (제목과 상호명 기준: title, product_name, store_name에서 검색)
   if (searchTerm) {
-    query = query.or(`product_name.ilike.%${searchTerm}%,store_name.ilike.%${searchTerm}%`);
+    query = query.or(`title.ilike.%${searchTerm}%,product_name.ilike.%${searchTerm}%,store_name.ilike.%${searchTerm}%`);
   }
 
   // 플랫폼 필터링 적용

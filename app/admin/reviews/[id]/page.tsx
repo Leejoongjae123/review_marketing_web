@@ -181,6 +181,15 @@ export default function EditReviewPage() {
           reviewGuide: review.guide || "",
         });
         
+        // 제품 이미지 설정 (기존 이미지가 있는 경우)
+        if (review.image_url) {
+          const existingImage = {
+            file: new File([], 'existing-product-image', { type: 'image/jpeg' }),
+            preview: review.image_url
+          };
+          setImages([existingImage]);
+        }
+
         // 광고주 설정
         const providers: Provider[] = [];
         if (review.provider1) {
@@ -361,6 +370,47 @@ export default function EditReviewPage() {
     setIsSubmitting(true);
     
     try {
+      // 제품 이미지 업로드 처리
+      let imageUrls: string[] = [];
+      
+      // 새로 추가된 제품 이미지들을 base64로 변환
+      for (const image of images) {
+        // 기존 파일이 아닌 새로 업로드된 파일만 처리
+        const isNewFile = image.file.size > 0 && 
+                         !image.file.name.startsWith('existing-') && 
+                         image.file.type.startsWith('image/');
+        
+        if (isNewFile) {
+          try {
+            const base64 = await fileToBase64(image.file);
+            
+            // 제품 이미지 업로드 API 호출
+            const uploadResponse = await fetch('/api/upload-image', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                base64Data: base64,
+                prefix: 'product'
+              }),
+            });
+            
+            if (uploadResponse.ok) {
+              const uploadResult = await uploadResponse.json();
+              if (uploadResult.url) {
+                imageUrls.push(uploadResult.url);
+              }
+            }
+          } catch (error) {
+            console.error('제품 이미지 업로드 실패:', error);
+          }
+        } else if (image.file.name.startsWith('existing-')) {
+          // 기존 이미지는 현재 URL을 그대로 사용
+          imageUrls.push(image.preview);
+        }
+      }
+
       // 구좌 데이터 준비 - 새로 추가된 파일만 전송
       const quotasData = await Promise.all(quotas.map(async (quota) => {
         const quotaData: any = {
@@ -432,6 +482,7 @@ export default function EditReviewPage() {
         provider2: selectedProviders[1]?.id || null,
         provider3: selectedProviders[2]?.id || null,
         guide: formData.reviewGuide,
+        image_url: imageUrls.length > 0 ? imageUrls[0] : null, // 첫 번째 이미지를 대표 이미지로 설정
         quotas_data: quotasData.filter(quota => 
           // 새로 추가된 파일이 하나라도 있는 구좌만 전송
           quota.images.length > 0 || quota.receipts.length > 0
@@ -475,6 +526,17 @@ export default function EditReviewPage() {
           }
           
           const review = result.review;
+          
+          // 제품 이미지 재설정 (기존 이미지가 있는 경우)
+          if (review.image_url) {
+            const existingImage = {
+              file: new File([], 'existing-product-image', { type: 'image/jpeg' }),
+              preview: review.image_url
+            };
+            setImages([existingImage]);
+          } else {
+            setImages([]);
+          }
           
           // 구좌 정보 재설정
           if (review.slots && review.slots.length > 0) {
@@ -1125,7 +1187,7 @@ export default function EditReviewPage() {
             )}
           </div>
 
-          <div className="space-y-2 col-span-2 md:col-span-1">
+          {/* <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="startDate">시작일 <span className="text-red-500">*</span></Label>
             <Input
               id="startDate"
@@ -1139,9 +1201,9 @@ export default function EditReviewPage() {
             {!formData.startDate && (
               <p className="text-red-500 text-sm mt-1">시작일은 필수 입력사항입니다.</p>
             )}
-          </div>
+          </div> */}
 
-          <div className="space-y-2 col-span-2 md:col-span-1">
+          {/* <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="endDate">종료일 <span className="text-red-500">*</span></Label>
             <Input
               id="endDate"
@@ -1155,7 +1217,7 @@ export default function EditReviewPage() {
             {!formData.endDate && (
               <p className="text-red-500 text-sm mt-1">종료일은 필수 입력사항입니다.</p>
             )}
-          </div>
+          </div> */}
 
           {/* 리뷰 가이드 */}
           <div className="space-y-2 col-span-2">
@@ -1284,7 +1346,7 @@ export default function EditReviewPage() {
                             : 'bg-gray-100 text-gray-600'
                         }`}>
                           {quota.status === 'available' ? '오픈' 
-                           : quota.status === 'reserved' ? '예약됨'
+                           : quota.status === 'reserved' ? '신청함'
                            : quota.status === 'complete' ? '완료'
                            : '미오픈'}
                         </span>
@@ -1440,15 +1502,7 @@ export default function EditReviewPage() {
         </div>
 
         <div className="flex justify-end gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={isSubmitting}
-          >
-            취소
-          </Button>
-          <AlertDialog>
+        <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">
                 삭제
@@ -1469,6 +1523,15 @@ export default function EditReviewPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            disabled={isSubmitting}
+          >
+            취소
+          </Button>
+          
           <Button 
             type="submit" 
             disabled={isSubmitting || !formData.startDate || !formData.endDate}

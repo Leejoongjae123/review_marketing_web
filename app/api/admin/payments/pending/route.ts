@@ -12,6 +12,8 @@ export async function GET(request: Request) {
     const pageSize = parseInt(url.searchParams.get('pageSize') || '10');
     const search = url.searchParams.get('search') || '';
     const category = url.searchParams.get('category') || 'name';
+    const startDate = url.searchParams.get('startDate');
+    const endDate = url.searchParams.get('endDate');
     
     // 권한 체크
     const { data: user } = await supabase.auth.getUser();
@@ -30,7 +32,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 });
     }
     
-    // 미정산 데이터 조회 (검색 조건 포함)
+    // 미정산 데이터 조회 (검색 조건 포함) - review 테이블과 조인하여 플랫폼 정보 포함
     let pendingQuery = supabase
       .from('slot_submissions')
       .select(`
@@ -49,9 +51,23 @@ export async function GET(request: Request) {
         submitted_at,
         updated_at,
         approval,
-        reason
+        reason,
+        reviews(
+          platform
+        )
       `)
       .eq('payment_status', 'pending');
+
+    // 날짜 범위 필터 적용
+    if (startDate) {
+      pendingQuery = pendingQuery.gte('submitted_at', startDate);
+    }
+    if (endDate) {
+      // endDate에 하루를 더해서 해당 날짜까지 포함
+      const endDateTime = new Date(endDate);
+      endDateTime.setDate(endDateTime.getDate() + 1);
+      pendingQuery = pendingQuery.lt('submitted_at', endDateTime.toISOString());
+    }
 
     // 검색 조건 적용
     if (search) {
@@ -134,6 +150,7 @@ export async function GET(request: Request) {
         nickname: submission.nickname,
         user_bank_name: profile.bank_name,
         user_account_number: profile.account_number,
+        platform: submission.reviews?.platform || '-',
         payment_amount: submission.payment_amount,
         payment_status: submission.payment_status,
         payment_created_at: submission.submitted_at,

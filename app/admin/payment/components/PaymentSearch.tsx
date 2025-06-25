@@ -11,12 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PaymentFilters } from "../types";
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 
 interface PaymentSearchProps {
   filters: PaymentFilters;
@@ -32,15 +26,6 @@ export default function PaymentSearch({ filters, onFiltersChange, onSearch }: Pa
 
   const handleSelectChange = (name: string, value: string) => {
     onFiltersChange({ ...filters, [name]: value });
-  };
-
-  const handleDateChange = (name: 'startDate' | 'endDate', date: Date | undefined) => {
-    if (date) {
-      onFiltersChange({ 
-        ...filters, 
-        [name]: format(date, 'yyyy-MM-dd') 
-      });
-    }
   };
 
   return (
@@ -70,10 +55,6 @@ export default function PaymentSearch({ filters, onFiltersChange, onSearch }: Pa
             className="w-full"
           />
         </div>
-        
-       
-        
-        
         
         <Button onClick={onSearch}>검색</Button>
       </div>

@@ -449,6 +449,18 @@ export async function DELETE(
       .delete()
       .eq('review_id', reviewId);
     
+    // 관련 슬롯(구좌) 데이터 삭제
+    await supabase
+      .from('slots')
+      .delete()
+      .eq('review_id', reviewId);
+    
+    // 일별 할당량 데이터 삭제
+    await supabase
+      .from('slot_daily_quotas')
+      .delete()
+      .eq('review_id', reviewId);
+    
     // 리뷰 삭제
     const { error } = await supabase
       .from('reviews')

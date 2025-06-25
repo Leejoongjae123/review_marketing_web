@@ -235,8 +235,8 @@ export default function AdminReviewsPage() {
 
   return (
     <div className="space-y-4 w-full h-full">
-      <h1 className="text-2xl font-bold tracking-tight">리뷰 목록</h1>
-      <p className="text-muted-foreground">플랫폼에 등록된 모든 리뷰를 관리합니다.</p>
+      <h1 className="text-2xl font-bold tracking-tight">이벤트 목록</h1>
+      <p className="text-muted-foreground">플랫폼에 등록된 모든 이벤트를 관리합니다.</p>
       
       <div className="flex justify-between items-center gap-4 mb-4">
         {/* 플랫폼 필터 버튼들 */}
@@ -276,7 +276,7 @@ export default function AdminReviewsPage() {
           </Button>
           <Button onClick={handleAddProduct}>
             <Plus className="h-4 w-4 mr-2" />
-            제품 등록
+            이벤트 등록
           </Button>
         </div>
       </div>
@@ -343,7 +343,7 @@ export default function AdminReviewsPage() {
                       )}
                     </td>
                     <td className="p-4 text-center">
-                      <div className="max-w-32 truncate" title={review.title}>
+                      <div className="w-full truncate text-center" title={review.title}>
                         {review.title || '-'}
                       </div>
                     </td>

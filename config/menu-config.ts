@@ -41,11 +41,11 @@ export const providerMenuItems: MenuItem[] = [
     href: "/provider/reviews",
     icon: "file-text",
   },
-  {
-    title: "응모 관리",
-    href: "/provider/history",
-    icon: "history",
-  }
+  // {
+  //   title: "응모 관리",
+  //   href: "/provider/history",
+  //   icon: "history",
+  // }
 ];
 
 // 리뷰어 메뉴 아이템

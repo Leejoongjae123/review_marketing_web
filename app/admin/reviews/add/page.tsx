@@ -56,6 +56,19 @@ interface Quota {
 export default function AddReviewPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 현재 날짜와 10년 후 날짜 계산
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    return now.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM 형식
+  };
+  
+  const getTenYearsLaterDateTime = () => {
+    const now = new Date();
+    const tenYearsLater = new Date(now.getFullYear() + 10, now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+    return tenYearsLater.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM 형식
+  };
+  
   const [formData, setFormData] = useState({
     platform: "",
     productName: "",
@@ -65,8 +78,8 @@ export default function AddReviewPage() {
     seller: "",
     participants: "",
     status: "approved",
-    startDate: "",
-    endDate: "",
+    startDate: getCurrentDateTime(), // 현재 날짜로 자동 설정
+    endDate: getTenYearsLaterDateTime(), // 10년 후로 자동 설정
     title: "",
     content: "",
     rating: "3",
@@ -114,6 +127,9 @@ export default function AddReviewPage() {
   const [currentQuotaIndex, setCurrentQuotaIndex] = useState(0);
   const [totalQuotasToSubmit, setTotalQuotasToSubmit] = useState(0);
   const [submissionStatus, setSubmissionStatus] = useState<string>("");
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [createdReviewId, setCreatedReviewId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   
   // 선택된 광고주 상태 변경 시 로그 출력
   useEffect(() => {
@@ -226,6 +242,10 @@ export default function AddReviewPage() {
     
     setIsSubmitting(true);
     
+    // AbortController 생성
+    const controller = new AbortController();
+    setAbortController(controller);
+    
     try {
       // 이미지 파일을 base64로 변환
       const imageFilesPromises = images.map(async (image) => {
@@ -278,6 +298,7 @@ export default function AddReviewPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(baseReviewData),
+        signal: controller.signal,
       });
       
       const baseResult = await baseResponse.json();
@@ -287,6 +308,7 @@ export default function AddReviewPage() {
       }
 
       const reviewId = baseResult.reviewId;
+      setCreatedReviewId(reviewId);
 
       // 구좌가 있는 경우에만 구좌별 API 호출 진행
       if (quotas.length > 0) {
@@ -297,6 +319,11 @@ export default function AddReviewPage() {
 
         // 각 구좌별로 API 호출
         for (let i = 0; i < quotas.length; i++) {
+          // 취소 확인
+          if (controller.signal.aborted) {
+            break;
+          }
+
           const quota = quotas[i];
           setCurrentQuotaIndex(i + 1);
           setSubmissionStatus(`구좌 ${quota.quotaNumber}번을 처리하고 있습니다...`);
@@ -347,6 +374,7 @@ export default function AddReviewPage() {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(quotaData),
+            signal: controller.signal,
           });
 
           if (!quotaResponse.ok) {
@@ -377,22 +405,30 @@ export default function AddReviewPage() {
         }, 1000);
       }
       
-      if (baseResult.warning) {
-        toast({
-          title: "일부 데이터만 저장됨",
-          description: baseResult.warning,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "리뷰 등록 성공",
-          description: "리뷰가 성공적으로 등록되었습니다.",
-        });
+      // 취소되지 않은 경우에만 성공 메시지 표시
+      if (!controller.signal.aborted && !isCancelling) {
+        if (baseResult.warning) {
+          toast({
+            title: "일부 데이터만 저장됨",
+            description: baseResult.warning,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "리뷰 등록 성공",
+            description: "리뷰가 성공적으로 등록되었습니다.",
+          });
+        }
+        
+        // 성공 시 리뷰 목록 페이지로 이동
+        router.push('/admin/reviews');
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('리뷰 등록이 취소되었습니다.');
+        return; // 취소된 경우 에러 메시지 표시하지 않음
       }
       
-      // 성공 시 리뷰 목록 페이지로 이동
-      router.push('/admin/reviews');
-    } catch (error) {
       console.error('리뷰 등록 오류:', error);
       toast({
         title: "리뷰 등록 실패",
@@ -402,6 +438,55 @@ export default function AddReviewPage() {
     } finally {
       setIsSubmitting(false);
       setIsSubmittingQuotas(false);
+      setAbortController(null);
+      setCreatedReviewId(null);
+    }
+  };
+
+  // 취소 핸들러
+  const handleCancel = async () => {
+    if (!abortController || !createdReviewId) return;
+    
+    setIsCancelling(true);
+    setSubmissionStatus("전송을 취소하고 데이터를 정리하고 있습니다...");
+    
+    try {
+      // 진행 중인 요청 중단
+      abortController.abort();
+      
+      // 생성된 리뷰와 슬롯 삭제
+      const deleteResponse = await fetch(`/api/reviews/${createdReviewId}`, {
+        method: 'DELETE',
+      });
+      
+      if (deleteResponse.ok) {
+        toast({
+          title: "전송 취소 완료",
+          description: "리뷰 등록이 취소되고 모든 데이터가 삭제되었습니다.",
+        });
+      } else {
+        toast({
+          title: "취소 처리 중 오류",
+          description: "데이터 삭제 중 일부 문제가 발생했습니다.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('취소 처리 오류:', error);
+      toast({
+        title: "취소 처리 실패",
+        description: "취소 처리 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCancelling(false);
+      setIsSubmittingQuotas(false);
+      setQuotaSubmissionProgress(0);
+      setCurrentQuotaIndex(0);
+      setTotalQuotasToSubmit(0);
+      setSubmissionStatus("");
+      setCreatedReviewId(null);
+      setAbortController(null);
     }
   };
 
@@ -776,10 +861,21 @@ export default function AddReviewPage() {
             <Input
               id="reviewFee"
               type="number"
+              min="0"
               value={formData.reviewFee}
-              onChange={(e) => setFormData(prev => ({ ...prev, reviewFee: e.target.value }))}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '' || parseFloat(value) >= 0) {
+                  setFormData(prev => ({ ...prev, reviewFee: value }));
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                  e.preventDefault();
+                }
+              }}
               placeholder="리뷰비를 입력하세요"
-              className={!formData.reviewFee ? "border-red-300 focus:border-red-500" : ""}
+              className={`${!formData.reviewFee ? "border-red-300 focus:border-red-500" : ""} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
               aria-required="true"
             />
             {!formData.reviewFee && (
@@ -831,10 +927,21 @@ export default function AddReviewPage() {
             <Input
               id="dailyCount"
               type="number"
+              min="0"
               value={formData.dailyCount}
-              onChange={(e) => setFormData(prev => ({ ...prev, dailyCount: e.target.value }))}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '' || parseInt(value) >= 0) {
+                  setFormData(prev => ({ ...prev, dailyCount: value }));
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                  e.preventDefault();
+                }
+              }}
               placeholder="일건수를 입력하세요"
-              className={!formData.dailyCount ? "border-red-300 focus:border-red-500" : ""}
+              className={`${!formData.dailyCount ? "border-red-300 focus:border-red-500" : ""} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
               aria-required="true"
             />
             {!formData.dailyCount && (
@@ -850,38 +957,6 @@ export default function AddReviewPage() {
             />
             {selectedProviders.length === 0 && (
               <div className="border-red-300 focus:border-red-500"></div>
-            )}
-          </div>
-
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="startDate">시작일 <span className="text-red-500">*</span></Label>
-            <Input
-              id="startDate"
-              type="datetime-local"
-              value={formData.startDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-              required
-              className={!formData.startDate ? "border-red-300 focus:border-red-500" : ""}
-              aria-required="true"
-            />
-            {!formData.startDate && (
-              <p className="text-red-500 text-sm mt-1">시작일은 필수 입력사항입니다.</p>
-            )}
-          </div>
-
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="endDate">종료일 <span className="text-red-500">*</span></Label>
-            <Input
-              id="endDate"
-              type="datetime-local"
-              value={formData.endDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-              required
-              className={!formData.endDate ? "border-red-300 focus:border-red-500" : ""}
-              aria-required="true"
-            />
-            {!formData.endDate && (
-              <p className="text-red-500 text-sm mt-1">종료일은 필수 입력사항입니다.</p>
             )}
           </div>
 
@@ -1350,8 +1425,17 @@ export default function AddReviewPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center flex items-center justify-center gap-2">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-              {submissionStatus}
+              {isCancelling ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
+                  데이터 정리 중...
+                </>
+              ) : (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                  {submissionStatus}
+                </>
+              )}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-6">
@@ -1360,14 +1444,19 @@ export default function AddReviewPage() {
                 {currentQuotaIndex} / {totalQuotasToSubmit}
               </div>
               <div className="text-sm text-muted-foreground mb-4">
-                {quotaSubmissionProgress === 100 ? '모든 구좌 처리가 완료되었습니다!' : '구좌를 처리하고 있습니다...'}
+                {isCancelling 
+                  ? '전송을 취소하고 데이터를 정리하고 있습니다...'
+                  : quotaSubmissionProgress === 100 
+                    ? '모든 구좌 처리가 완료되었습니다!' 
+                    : '구좌를 처리하고 있습니다...'
+                }
               </div>
             </div>
             
             <div className="space-y-3">
               <Progress 
                 value={quotaSubmissionProgress} 
-                className="w-full h-4 transition-all duration-300" 
+                className={`w-full h-4 transition-all duration-300 ${isCancelling ? 'opacity-50' : ''}`}
               />
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">진행률</span>
@@ -1377,9 +1466,27 @@ export default function AddReviewPage() {
               </div>
             </div>
             
-            {quotaSubmissionProgress < 100 && (
-              <div className="text-center text-xs text-muted-foreground animate-pulse">
-                잠시만 기다려주세요...
+            {!isCancelling && quotaSubmissionProgress < 100 && (
+              <div className="space-y-3">
+                <div className="text-center text-xs text-muted-foreground animate-pulse">
+                  잠시만 기다려주세요...
+                </div>
+                <div className="text-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    전송 취소
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {isCancelling && (
+              <div className="text-center text-xs text-red-600 animate-pulse">
+                취소 처리 중입니다. 잠시만 기다려주세요...
               </div>
             )}
           </div>

@@ -316,17 +316,17 @@ export default function ProviderReviewsPage() {
             <Download className="h-4 w-4 mr-2" />
             엑셀 다운로드
           </Button>
-          <Button onClick={handleAddProduct}>
+          {/* <Button onClick={handleAddProduct}>
             <Plus className="h-4 w-4 mr-2" />
             제품 등록
-          </Button>
+          </Button> */}
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="flex-1">
           <Input
-            placeholder="상호명으로 검색하세요"
+            placeholder="상호명 또는 제목으로 검색하세요"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full"
@@ -351,6 +351,7 @@ export default function ProviderReviewsPage() {
                 <th className="h-12 px-4 text-center align-middle font-medium w-20">번호</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-24">플랫폼</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-24">이미지</th>
+                <th className="h-12 px-4 text-center align-middle font-medium w-32">제목</th>
                 <th className="h-12 px-4 text-center align-middle font-medium w-32">
                   {platformFilter === "쿠팡" || platformFilter === "스토어" ? "제품명" : "상호명"}
                 </th>
@@ -386,6 +387,11 @@ export default function ProviderReviewsPage() {
                       ) : (
                         <img src="/noimage.jpg" alt="상품 이미지" className="w-16 h-16 object-cover mx-auto" />
                       )}
+                    </td>
+                    <td className="p-4 text-center">
+                      <div className="w-full truncate text-center" title={review.title}>
+                        {review.title || '-'}
+                      </div>
                     </td>
                     <td className="p-4 text-center">
                       {isProductPlatform ? review.product_name : (review.store_name || review.product_name)}

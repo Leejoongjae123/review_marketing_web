@@ -75,6 +75,7 @@ export default function ProcessingPaymentsTable({
                 <TableHead>이름</TableHead>
                 <TableHead>은행</TableHead>
                 <TableHead>계좌번호</TableHead>
+                <TableHead>플랫폼</TableHead>
                 <TableHead>금액</TableHead>
                 <TableHead>신청일</TableHead>
                 <TableHead>사유</TableHead>
@@ -82,7 +83,7 @@ export default function ProcessingPaymentsTable({
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   처리 대기 중인 내역이 없습니다.
                 </TableCell>
               </TableRow>
@@ -119,6 +120,7 @@ export default function ProcessingPaymentsTable({
               <TableHead>이름</TableHead>
               <TableHead>은행</TableHead>
               <TableHead>계좌번호</TableHead>
+              <TableHead>플랫폼</TableHead>
               <TableHead>금액</TableHead>
               <TableHead>신청일</TableHead>
               <TableHead>사유</TableHead>
@@ -126,8 +128,16 @@ export default function ProcessingPaymentsTable({
           </TableHeader>
           <TableBody>
             {payments.map((payment) => (
-              <TableRow key={payment.id}>
-                <TableCell>
+              <TableRow 
+                key={payment.id}
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={(e) => {
+                  // Input 필드나 체크박스를 클릭한 경우는 제외
+                  if (e.target instanceof HTMLInputElement) return;
+                  handleSelectItem(payment.id, !selectedItems.includes(payment.id));
+                }}
+              >
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox
                     checked={selectedItems.includes(payment.id)}
                     onCheckedChange={(checked) => handleSelectItem(payment.id, !!checked)}
@@ -137,6 +147,7 @@ export default function ProcessingPaymentsTable({
                 <TableCell className="font-medium">{payment.name}</TableCell>
                 <TableCell>{payment.user_bank_name || '-'}</TableCell>
                 <TableCell>{payment.user_account_number || '-'}</TableCell>
+                <TableCell>{payment.platform || '-'}</TableCell>
                 <TableCell>{typeof payment.payment_amount === 'number' && !isNaN(payment.payment_amount) ? new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(payment.payment_amount) : '-'}</TableCell>
                 <TableCell>
                   {payment.payment_created_at && !isNaN(new Date(payment.payment_created_at).getTime()) ? 
@@ -148,7 +159,7 @@ export default function ProcessingPaymentsTable({
                     minute: '2-digit'
                   }) : '-'}
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Input
                     placeholder="사유 입력"
                     value={reasons[payment.id] || payment.reason || ''}

@@ -15,6 +15,7 @@ import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
+import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 
 // Nodes
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -147,6 +148,7 @@ const nodes = [
   TableCellNode,
   TableRowNode,
   ImageNode,
+  VideoNode,
 ];
 
 // HTML 콘텐츠 초기화를 위한 컴포넌트
@@ -283,6 +285,7 @@ function LexicalEditorComponent({ contents, setContents }) {
     theme,
     onError,
     nodes,
+    editable: true,
   };
 
   // 외부에서 contents가 변경된 경우 감지
@@ -318,6 +321,7 @@ function LexicalEditorComponent({ contents, setContents }) {
             ErrorBoundary={LexicalErrorBoundary}
           />
           <HistoryPlugin />
+          <AutoFocusPlugin />
           <OnChangeHTML setContents={setContents} isExternalChange={isExternalChange} />
           <InitialContentPlugin contents={safeContents} isExternalChange={isExternalChange} />
           <ListPlugin />

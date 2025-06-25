@@ -140,6 +140,7 @@ export default function ProcessedPaymentsTable({
                 <TableHead>이름</TableHead>
                 <TableHead>은행</TableHead>
                 <TableHead>계좌번호</TableHead>
+                <TableHead>플랫폼</TableHead>
                 <TableHead>금액</TableHead>
                 <TableHead>신청일</TableHead>
                 <TableHead>처리일자</TableHead>
@@ -150,7 +151,7 @@ export default function ProcessedPaymentsTable({
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   처리 완료된 내역이 없습니다.
                 </TableCell>
               </TableRow>
@@ -173,17 +174,18 @@ export default function ProcessedPaymentsTable({
       <div className="rounded-md border">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>이름</TableHead>
-              <TableHead>은행</TableHead>
-              <TableHead>계좌번호</TableHead>
-              <TableHead>금액</TableHead>
-              <TableHead>신청일</TableHead>
-              <TableHead>처리일자</TableHead>
-              <TableHead>상태</TableHead>
-              <TableHead>사유</TableHead>
-              <TableHead>관리</TableHead>
-            </TableRow>
+                          <TableRow>
+                <TableHead>이름</TableHead>
+                <TableHead>은행</TableHead>
+                <TableHead>계좌번호</TableHead>
+                <TableHead>플랫폼</TableHead>
+                <TableHead>금액</TableHead>
+                <TableHead>신청일</TableHead>
+                <TableHead>처리일자</TableHead>
+                <TableHead>상태</TableHead>
+                <TableHead>사유</TableHead>
+                <TableHead>관리</TableHead>
+              </TableRow>
           </TableHeader>
           <TableBody>
             {payments.map((payment) => (
@@ -191,6 +193,7 @@ export default function ProcessedPaymentsTable({
                 <TableCell className="font-medium">{payment.name}</TableCell>
                 <TableCell>{payment.bank || payment.user_bank_name || '-'}</TableCell>
                 <TableCell>{payment.accountNumber || payment.user_account_number || '-'}</TableCell>
+                <TableCell>{payment.platform || '-'}</TableCell>
                 <TableCell>{formatAmountKRW(payment.amount || payment.payment_amount || 0)}</TableCell>
                 <TableCell>{formatDateTime(payment.createdAt || payment.payment_created_at || '')}</TableCell>
                 <TableCell>{formatDateTime(payment.updatedAt || payment.payment_processed_at || '')}</TableCell>

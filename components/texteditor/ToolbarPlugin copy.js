@@ -21,7 +21,8 @@ import {
 } from '@lexical/list';
 import { FORMAT_TEXT_COMMAND, FORMAT_ELEMENT_COMMAND } from 'lexical';
 import { $setBlocksType } from '@lexical/selection';
-import { $createHeadingNode } from '@lexical/rich-text';
+import { $createHeadingNode, $createQuoteNode } from '@lexical/rich-text';
+import { $createCodeNode } from '@lexical/code';
 import { 
   INSERT_TABLE_COMMAND,
   $insertTableRow__EXPERIMENTAL,
@@ -79,9 +80,7 @@ export default function ToolbarPlugin() {
       if (elementDOM !== null) {
         if ($isListNode(element)) {
           const parentList = element.getParent();
-          const type = (parentList && $isListNode(parentList)) 
-            ? parentList.getListType() 
-            : element.getListType();
+          const type = parentList ? parentList.getListType() : element.getListType();
           setBlockType(type || 'paragraph');
         } else {
           const type = $isHeadingNode(element)
@@ -158,17 +157,39 @@ export default function ToolbarPlugin() {
 
   const formatBulletList = () => {
     if (blockType !== 'bullet') {
-      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND);
     } else {
-      editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
+      editor.dispatchCommand(REMOVE_LIST_COMMAND);
     }
   };
 
   const formatNumberedList = () => {
     if (blockType !== 'number') {
-      editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+      editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND);
     } else {
-      editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
+      editor.dispatchCommand(REMOVE_LIST_COMMAND);
+    }
+  };
+
+  const formatQuote = () => {
+    if (blockType !== 'quote') {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          $setBlocksType(selection, () => $createQuoteNode());
+        }
+      });
+    }
+  };
+
+  const formatCode = () => {
+    if (blockType !== 'code') {
+      editor.update(() => {
+        const selection = $getSelection();
+        if ($isRangeSelection(selection)) {
+          $setBlocksType(selection, () => $createCodeNode());
+        }
+      });
     }
   };
 
@@ -332,6 +353,10 @@ export default function ToolbarPlugin() {
             formatBulletList();
           } else if (value === 'number') {
             formatNumberedList();
+          } else if (value === 'quote') {
+            formatQuote();
+          } else if (value === 'code') {
+            formatCode();
           }
         }}
       >
@@ -340,6 +365,9 @@ export default function ToolbarPlugin() {
         <option value="h2">제목 2</option>
         <option value="h3">제목 3</option>
         <option value="bullet">글머리 기호</option>
+        <option value="number">번호 매기기</option>
+        <option value="quote">인용</option>
+        <option value="code">코드 블록</option>
       </select>
 
       <div className="h-6 w-px bg-gray-300" />
@@ -350,12 +378,7 @@ export default function ToolbarPlugin() {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          editor.update(() => {
-            const selection = $getSelection();
-            if ($isRangeSelection(selection)) {
-              selection.formatText('bold');
-            }
-          });
+          editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
         }}
         onMouseDown={(e) => {
           e.preventDefault();
@@ -372,12 +395,7 @@ export default function ToolbarPlugin() {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          editor.update(() => {
-            const selection = $getSelection();
-            if ($isRangeSelection(selection)) {
-              selection.formatText('italic');
-            }
-          });
+          editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
         }}
         onMouseDown={(e) => {
           e.preventDefault();
@@ -394,12 +412,7 @@ export default function ToolbarPlugin() {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          editor.update(() => {
-            const selection = $getSelection();
-            if ($isRangeSelection(selection)) {
-              selection.formatText('underline');
-            }
-          });
+          editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
         }}
         onMouseDown={(e) => {
           e.preventDefault();
@@ -416,13 +429,7 @@ export default function ToolbarPlugin() {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          
-          editor.update(() => {
-            const selection = $getSelection();
-            if ($isRangeSelection(selection)) {
-              selection.formatText('strikethrough');
-            }
-          });
+          editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough');
         }}
         onMouseDown={(e) => {
           e.preventDefault();
@@ -667,39 +674,6 @@ export default function ToolbarPlugin() {
         <MdImage className="w-4 h-4" />
       </button>
 
-      <button
-        className="px-3 py-1 border rounded bg-white hover:bg-gray-100 flex items-center justify-center"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          insertVideo();
-        }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-        }}
-        aria-label="Insert Video"
-        title="비디오 삽입"
-        type="button"
-      >
-        <MdVideoLibrary className="w-4 h-4" />
-      </button>
-
-      {/* <button
-        className="px-3 py-1 border rounded bg-white hover:bg-gray-100 flex items-center justify-center"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          insertTable();
-        }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-        }}
-        aria-label="Insert Table"
-        title="테이블 삽입"
-        type="button"
-      >
-        <MdTableChart className="w-4 h-4" />
-      </button> */}
 
       <ImageUploadDialog
         isOpen={showImageDialog}

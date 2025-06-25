@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronLeft, ChevronRight, User, Eye } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, User, Eye, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -436,6 +436,10 @@ export default function MypagePage() {
     setIsDetailDialogOpen(true);
   };
 
+  const handleImageClick = (imageUrl: string) => {
+    window.open(imageUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+  };
+
   return (
     <div className="space-y-6 w-full h-full">
       <h1 className="text-2xl font-bold tracking-tight">마이페이지</h1>
@@ -686,8 +690,9 @@ export default function MypagePage() {
       </Card>
 
       {/* 상세 정보 다이얼로그 */}
-      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <div className="z-20">
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               슬롯 신청 상세 정보
@@ -718,10 +723,10 @@ export default function MypagePage() {
                       <Label className="text-sm font-medium text-muted-foreground">플랫폼</Label>
                       <p className="mt-1">{selectedActivity.review_platform}</p>
                     </div>
-                    <div>
+                    {/* <div>
                       <Label className="text-sm font-medium text-muted-foreground">평점</Label>
                       <p className="mt-1">{selectedActivity.review_rating}점</p>
-                    </div>
+                    </div> */}
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground">상품 가격</Label>
                       <p className="mt-1">{selectedActivity.review_price?.toLocaleString()}원</p>
@@ -799,7 +804,8 @@ export default function MypagePage() {
                           <img
                             src={imageUrl}
                             alt={`제출 이미지 ${index + 1}`}
-                            className="w-full h-full object-cover rounded-lg border"
+                            className="w-full h-full object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => handleImageClick(imageUrl)}
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/placeholder-image.png'; // 기본 이미지 경로
@@ -814,7 +820,8 @@ export default function MypagePage() {
             </div>
           )}
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      </div>
     </div>
   );
 }

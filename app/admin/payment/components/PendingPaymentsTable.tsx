@@ -51,6 +51,17 @@ export default function PendingPaymentsTable({
     }
   };
 
+  const handleRowClick = (paymentId: string, e: React.MouseEvent) => {
+    // 체크박스나 체크박스를 감싸는 요소를 직접 클릭한 경우는 제외
+    const target = e.target as HTMLElement;
+    if (target.closest('button[role="checkbox"]') || target.closest('[data-state]')) {
+      return;
+    }
+    
+    const isSelected = selectedItems.includes(paymentId);
+    handleSelectOne(!isSelected, paymentId);
+  };
+
   return (
     <div className="space-y-4">
       <div className="border rounded-md">
@@ -66,6 +77,7 @@ export default function PendingPaymentsTable({
               <TableHead>이름</TableHead>
               <TableHead>은행</TableHead>
               <TableHead>계좌번호</TableHead>
+              <TableHead>플랫폼</TableHead>
               <TableHead>금액</TableHead>
               <TableHead>신청일</TableHead>
             </TableRow>
@@ -73,13 +85,17 @@ export default function PendingPaymentsTable({
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   미정산 내역이 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
               payments.map((payment) => (
-                <TableRow key={payment.id}>
+                <TableRow 
+                  key={payment.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={(e) => handleRowClick(payment.id, e)}
+                >
                   <TableCell>
                     <Checkbox
                       checked={selectedItems.includes(payment.id)}
@@ -89,6 +105,7 @@ export default function PendingPaymentsTable({
                   <TableCell className="font-medium">{payment.name}</TableCell>
                   <TableCell>{payment.user_bank_name || '-'}</TableCell>
                   <TableCell>{payment.user_account_number || '-'}</TableCell>
+                  <TableCell>{payment.platform || '-'}</TableCell>
                   <TableCell>{typeof payment.payment_amount === 'number' && !isNaN(payment.payment_amount) ? new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(payment.payment_amount) : '-'}</TableCell>
                   <TableCell>
                     {payment.payment_created_at && !isNaN(new Date(payment.payment_created_at).getTime()) ? 

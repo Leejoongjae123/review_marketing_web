@@ -1,3 +1,5 @@
+import { DateRange } from "react-day-picker";
+
 // 정산 데이터 타입 정의
 export interface Payment {
   id: string;
@@ -45,6 +47,19 @@ export interface PaymentFilters {
   paymentStatus: string;
   startDate: string;
   endDate: string;
+}
+
+export interface PendingPaymentFilters {
+  searchTerm: string;
+  searchCategory: string;
+  dateRange: DateRange | undefined;
+}
+
+export interface ProcessedPaymentFilters {
+  searchTerm: string;
+  searchCategory: string;
+  statusFilter: string;
+  dateRange: DateRange | undefined;
 }
 
 export interface PaymentPagination {

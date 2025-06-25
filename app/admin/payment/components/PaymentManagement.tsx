@@ -3,7 +3,7 @@ import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Download } from "lucide-react";
-import { Payment, PaymentResponse } from "../types";
+import { Payment, PaymentResponse, PendingPaymentFilters, ProcessedPaymentFilters } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PendingPaymentsTable from './PendingPaymentsTable';
 import ProcessingPaymentsTable from './ProcessingPaymentsTable';
@@ -14,6 +14,7 @@ import ProcessedPaymentSearch from './ProcessedPaymentSearch';
 import { PaymentItem } from '../types';
 import TableLoader from './TableLoader';
 import ExcelDownloadModal from './ExcelDownloadModal';
+import { subDays } from "date-fns";
 
 function PaymentManagementContent() {
   const router = useRouter();
@@ -51,15 +52,20 @@ function PaymentManagementContent() {
   const [pageSize] = useState(10);
   
   // 필터 상태
-  const [pendingFilters, setPendingFilters] = useState({
-    searchTerm: '',
-    searchCategory: 'name'
-  });
-  
-  const [processedFilters, setProcessedFilters] = useState({
+  const [pendingFilters, setPendingFilters] = useState<PendingPaymentFilters>({
     searchTerm: '',
     searchCategory: 'name',
-    statusFilter: 'all'
+    dateRange: {
+      from: subDays(new Date(), 30), // 30일 전
+      to: new Date() // 오늘
+    }
+  });
+  
+  const [processedFilters, setProcessedFilters] = useState<ProcessedPaymentFilters>({
+    searchTerm: '',
+    searchCategory: 'name',
+    statusFilter: 'all',
+    dateRange: undefined
   });
   
   // 미정산 데이터 조회 함수
@@ -75,6 +81,14 @@ function PaymentManagementContent() {
       if (pendingFilters.searchTerm) {
         params.append('search', pendingFilters.searchTerm);
         params.append('category', pendingFilters.searchCategory);
+      }
+
+      // 날짜 범위 필터 추가
+      if (pendingFilters.dateRange?.from) {
+        params.append('startDate', pendingFilters.dateRange.from.toISOString());
+      }
+      if (pendingFilters.dateRange?.to) {
+        params.append('endDate', pendingFilters.dateRange.to.toISOString());
       }
 
       const response = await fetch(`/api/admin/payments/pending?${params.toString()}`);
@@ -128,7 +142,7 @@ function PaymentManagementContent() {
   };
 
   // 처리결과 데이터 조회 함수
-  const fetchProcessedPayments = async (filters?: typeof processedFilters) => {
+  const fetchProcessedPayments = async (filters?: ProcessedPaymentFilters) => {
     setProcessedLoading(true);
     try {
       const currentFilters = filters || processedFilters;
@@ -144,6 +158,14 @@ function PaymentManagementContent() {
       }
       if (currentFilters.statusFilter !== 'all') {
         params.append('status', currentFilters.statusFilter);
+      }
+
+      // 날짜 범위 필터 추가
+      if (currentFilters.dateRange?.from) {
+        params.append('startDate', currentFilters.dateRange.from.toISOString());
+      }
+      if (currentFilters.dateRange?.to) {
+        params.append('endDate', currentFilters.dateRange.to.toISOString());
       }
 
       const response = await fetch(`/api/admin/payments/processed?${params.toString()}`);
@@ -166,7 +188,7 @@ function PaymentManagementContent() {
     }
   };
 
-  const fetchProcessedPaymentsWithFilters = async (filters: typeof processedFilters) => {
+  const fetchProcessedPaymentsWithFilters = async (filters: ProcessedPaymentFilters) => {
     await fetchProcessedPayments(filters);
   };
 
@@ -251,7 +273,7 @@ function PaymentManagementContent() {
   };
 
   // 처리결과 필터 변경 시 상태만 업데이트 (자동 검색 제거)
-  const handleProcessedFiltersChange = async (newFilters: typeof processedFilters) => {
+  const handleProcessedFiltersChange = async (newFilters: ProcessedPaymentFilters) => {
     setProcessedFilters(newFilters);
     
     // 상태 필터가 변경된 경우에만 자동 검색 (상태 버튼 클릭 시)

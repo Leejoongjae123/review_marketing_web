@@ -35,6 +35,9 @@ export async function GET(request: NextRequest) {
       query = query.lte("end_date", endDate);
     }
 
+    // 최신순 정렬 (created_at 기준)
+    query = query.order("created_at", { ascending: false });
+
     // 페이지네이션
     const start = (page - 1) * pageSize;
     query = query.range(start, start + pageSize - 1);

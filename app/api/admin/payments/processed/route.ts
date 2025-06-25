@@ -13,6 +13,8 @@ export async function GET(request: Request) {
     const search = url.searchParams.get('search') || '';
     const category = url.searchParams.get('category') || 'name';
     const status = url.searchParams.get('status') || 'all';
+    const startDate = url.searchParams.get('startDate');
+    const endDate = url.searchParams.get('endDate');
     
     // 권한 체크
     const { data: user } = await supabase.auth.getUser();
@@ -31,7 +33,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 });
     }
     
-    // 처리완료(completed) 또는 실패(failed) 데이터 조회
+    // 처리완료(completed) 또는 실패(failed) 데이터 조회 - review 테이블과 조인하여 플랫폼 정보 포함
     let processedQuery = supabase
       .from('slot_submissions')
       .select(`
@@ -50,7 +52,10 @@ export async function GET(request: Request) {
         submitted_at,
         updated_at,
         approval,
-        reason
+        reason,
+        reviews(
+          platform
+        )
       `);
     
     // 상태 필터 적용
@@ -61,6 +66,17 @@ export async function GET(request: Request) {
     } else {
       // 전체 조회 시 completed와 failed만 가져오기
       processedQuery = processedQuery.in('payment_status', ['completed', 'failed']);
+    }
+    
+    // 날짜 범위 필터 적용
+    if (startDate) {
+      processedQuery = processedQuery.gte('submitted_at', startDate);
+    }
+    if (endDate) {
+      // endDate는 해당 날짜의 끝까지 포함하도록 처리
+      const endDateTime = new Date(endDate);
+      endDateTime.setHours(23, 59, 59, 999);
+      processedQuery = processedQuery.lte('submitted_at', endDateTime.toISOString());
     }
     
     // 검색 조건 적용
@@ -77,6 +93,11 @@ export async function GET(request: Request) {
     
     if (processedError) {
       return NextResponse.json({ error: '처리완료 데이터 조회 실패', details: processedError }, { status: 500 });
+    }
+
+    // 디버깅을 위한 로그 (첫 번째 항목의 구조 확인)
+    if (allProcessedSubmissions && allProcessedSubmissions.length > 0) {
+      console.log('First submission structure:', JSON.stringify(allProcessedSubmissions[0], null, 2));
     }
 
     // 은행/계좌번호 검색을 위한 필터링
@@ -137,6 +158,14 @@ export async function GET(request: Request) {
     const mapToPayment = (submission: any): Payment => {
       const profile = profilesMap[submission.user_id] || {};
       
+      // 디버깅을 위한 로그
+      console.log('Mapping submission:', {
+        id: submission.id,
+        name: submission.name,
+        reviews: submission.reviews,
+        platform: submission.reviews?.platform
+      });
+      
       return {
         id: submission.id,
         name: submission.name,
@@ -144,6 +173,7 @@ export async function GET(request: Request) {
         nickname: submission.nickname,
         user_bank_name: profile.bank_name,
         user_account_number: profile.account_number,
+        platform: submission.reviews?.platform || '-',
         payment_amount: submission.payment_amount,
         payment_status: submission.payment_status,
         payment_created_at: submission.submitted_at,

@@ -67,3 +67,45 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Lexical 에디터 스타일 */
+.editor-input {
+  /* 텍스트 포맷팅 스타일 강제 적용 */
+}
+
+.editor-input strong,
+.editor-input b {
+  font-weight: bold !important;
+}
+
+.editor-input em,
+.editor-input i {
+  font-style: italic !important;
+}
+
+.editor-input u {
+  text-decoration: underline !important;
+}
+
+.editor-input s,
+.editor-input strike,
+.editor-input del {
+  text-decoration: line-through !important;
+}
+
+/* Lexical에서 생성되는 특정 클래스들 */
+.editor-input .line-through {
+  text-decoration: line-through !important;
+}
+
+.editor-input .font-bold {
+  font-weight: bold !important;
+}
+
+.editor-input .italic {
+  font-style: italic !important;
+}
+
+.editor-input .underline {
+  text-decoration: underline !important;
+}

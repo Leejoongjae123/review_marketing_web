@@ -390,7 +390,7 @@ export default function SlotManagementDialog({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 justify-center items-center">
                 {/* 관리자 업로드 이미지들 */}
                 <div className="flex flex-col items-center justify-center">
-                  <h3 className="text-lg font-semibold mb-3">참고용 이미지</h3>
+                  <h3 className="text-lg font-semibold mb-3">업로드 이미지</h3>
                   {slot.images.length > 0 ? (
                     <div className="flex flex-wrap gap-4">
                       {slot.images.map((imageData, index) => (

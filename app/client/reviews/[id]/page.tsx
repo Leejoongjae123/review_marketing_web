@@ -89,6 +89,7 @@ export default function ReviewDetailPage() {
     purchaseCost: "",
     reviewGuide: "",
   });
+  const [productImages, setProductImages] = useState<{ preview: string }[]>([]);
   const [selectedProviders, setSelectedProviders] = useState<any[]>([]);
 
   // 구좌 관련 상태
@@ -212,6 +213,11 @@ export default function ReviewDetailPage() {
             : "",
           reviewGuide: review.guide || "",
         });
+
+        // 제품 이미지 설정
+        if (review.image_url) {
+          setProductImages([{ preview: review.image_url }]);
+        }
 
         // 광고주 설정
         const providers: any[] = [];
@@ -737,484 +743,505 @@ export default function ReviewDetailPage() {
           <h1 className="text-2xl font-bold">리뷰 상세 정보</h1>
         </div>
 
-      <div className="space-y-6 w-full">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="platform">플랫폼</Label>
-            <Input
-              id="platform"
-              value={formData.platform}
-              readOnly
-              className="bg-gray-50"
-            />
+        {/* 제품 이미지 표시 섹션 */}
+        {productImages.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">제품 이미지</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {productImages.map((image, index) => (
+                <div key={index} className="relative group">
+                  <div className="aspect-square relative rounded-lg overflow-hidden border shadow-sm">
+                    <Image
+                      src={image.preview}
+                      alt={`제품 이미지 ${index + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
+        )}
 
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="status">상태</Label>
-            <Input
-              id="status"
-              value={
-                formData.status === "approved"
-                  ? "승인됨"
-                  : formData.status === "pending"
-                    ? "대기중"
-                    : "거부됨"
-              }
-              readOnly
-              className="bg-gray-50"
-            />
-          </div>
-
-          <div className="space-y-2 col-span-1">
-            <Label htmlFor="title">제목</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              readOnly
-              className="bg-gray-50"
-            />
-          </div>
-
-          {/* 공통 필드: 상호명/제품명 */}
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor={isProductPlatform ? "productName" : "storeName"}>
-              {isProductPlatform ? "제품명" : "상호명"}
-            </Label>
-            <Input
-              id={isProductPlatform ? "productName" : "storeName"}
-              value={
-                isProductPlatform ? formData.productName : formData.storeName
-              }
-              readOnly
-              className="bg-gray-50"
-            />
-          </div>
-
-          {/* 검색어 (쿠팡, 스토어만) */}
-          {isProductPlatform && (
-            <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="searchKeyword">검색어</Label>
+        <div className="space-y-6 w-full">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="platform">플랫폼</Label>
               <Input
-                id="searchKeyword"
-                value={formData.searchKeyword}
+                id="platform"
+                value={formData.platform}
                 readOnly
                 className="bg-gray-50"
               />
             </div>
-          )}
 
-          {/* 상호링크/제품링크 */}
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor={isProductPlatform ? "productUrl" : "storeUrl"}>
-              {isProductPlatform ? "제품링크" : "상호링크"}
-            </Label>
-            <div className="flex items-center gap-2">
+            {/* <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="status">상태</Label>
               <Input
-                id={isProductPlatform ? "productUrl" : "storeUrl"}
+                id="status"
                 value={
-                  isProductPlatform ? formData.productUrl : formData.storeUrl
+                  formData.status === "approved"
+                    ? "승인됨"
+                    : formData.status === "pending"
+                      ? "대기중"
+                      : "거부됨"
                 }
                 readOnly
                 className="bg-gray-50"
               />
-              {(formData.productUrl || formData.storeUrl) && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="whitespace-nowrap"
-                >
-                  <a
-                    href={
-                      isProductPlatform
-                        ? formData.productUrl
-                        : formData.storeUrl
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
+            </div> */}
+
+            {/* <div className="space-y-2 col-span-1">
+              <Label htmlFor="title">제목</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                readOnly
+                className="bg-gray-50"
+              />
+            </div> */}
+
+            {/* 공통 필드: 상호명/제품명 */}
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor={isProductPlatform ? "productName" : "storeName"}>
+                {isProductPlatform ? "제품명" : "상호명"}
+              </Label>
+              <Input
+                id={isProductPlatform ? "productName" : "storeName"}
+                value={
+                  isProductPlatform ? formData.productName : formData.storeName
+                }
+                readOnly
+                className="bg-gray-50"
+              />
+            </div>
+
+            {/* 검색어 (쿠팡, 스토어만) */}
+            {isProductPlatform && (
+              <div className="space-y-2 md:col-span-1">
+                <Label htmlFor="searchKeyword">검색어</Label>
+                <Input
+                  id="searchKeyword"
+                  value={formData.searchKeyword}
+                  readOnly
+                  className="bg-gray-50"
+                />
+              </div>
+            )}
+
+            {/* 상호링크/제품링크 */}
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor={isProductPlatform ? "productUrl" : "storeUrl"}>
+                {isProductPlatform ? "제품링크" : "상호링크"}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id={isProductPlatform ? "productUrl" : "storeUrl"}
+                  value={
+                    isProductPlatform ? formData.productUrl : formData.storeUrl
+                  }
+                  readOnly
+                  className="bg-gray-50"
+                />
+                {(formData.productUrl || formData.storeUrl) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="whitespace-nowrap"
                   >
-                    링크 이동
-                  </a>
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* 리뷰비 (모든 플랫폼) */}
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="reviewFee">리뷰비</Label>
-            <Input
-              id="reviewFee"
-              value={`${Number(formData.reviewFee).toLocaleString()}원`}
-              readOnly
-              className="bg-gray-50"
-            />
-          </div>
-
-          {/* 예약금액 (예약자리뷰만) */}
-          {isReservationReview && (
-            <div className="space-y-2 col-span-2 md:col-span-1">
-              <Label htmlFor="reservationAmount">예약금액</Label>
-              <Input
-                id="reservationAmount"
-                value={`${Number(formData.reservationAmount).toLocaleString()}원`}
-                readOnly
-                className="bg-gray-50"
-              />
-            </div>
-          )}
-
-          {/* 구매비용 (쿠팡, 스토어만) */}
-          {isProductPlatform && (
-            <div className="space-y-2 col-span-2 md:col-span-1">
-              <Label htmlFor="purchaseCost">구매비용</Label>
-              <Input
-                id="purchaseCost"
-                value={`${Number(formData.purchaseCost).toLocaleString()}원`}
-                readOnly
-                className="bg-gray-50"
-              />
-            </div>
-          )}
-
-          {/* 일건수 (모든 플랫폼) */}
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="dailyCount">일건수</Label>
-            <Input
-              id="dailyCount"
-              value={formData.dailyCount}
-              readOnly
-              className="bg-gray-50"
-            />
-          </div>
-
-          <div className="space-y-2 col-span-1">
-            <Label>광고주</Label>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {selectedProviders.map((provider, index) => (
-                <div
-                  key={index}
-                  className="bg-gray-100 px-3 py-1 rounded-full text-sm"
-                >
-                  {provider.full_name}
-                </div>
-              ))}
-              {selectedProviders.length === 0 && (
-                <div className="text-gray-500">지정된 광고주가 없습니다</div>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="startDate">시작일</Label>
-            <Input
-              id="startDate"
-              value={
-                formData.startDate
-                  ? new Date(formData.startDate).toLocaleString("ko-KR")
-                  : ""
-              }
-              readOnly
-              className="bg-gray-50"
-            />
-          </div>
-
-          <div className="space-y-2 col-span-2 md:col-span-1">
-            <Label htmlFor="endDate">종료일</Label>
-            <Input
-              id="endDate"
-              value={
-                formData.endDate
-                  ? new Date(formData.endDate).toLocaleString("ko-KR")
-                  : ""
-              }
-              readOnly
-              className="bg-gray-50"
-            />
-          </div>
-
-          {/* 리뷰 가이드 */}
-          {formData.reviewGuide && (
-            <div className="space-y-2 col-span-2">
-              <Label htmlFor="reviewGuide">리뷰 작성 가이드</Label>
-              <Textarea
-                id="reviewGuide"
-                value={formData.reviewGuide}
-                readOnly
-                rows={4}
-                className="bg-gray-50"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* 구좌 관리 섹션 */}
-        <Separator />
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">구좌 정보</h2>
-            {currentUserId && (
-              <div className="flex items-center gap-6 text-sm text-gray-600">
-                {/* 일일 제한 상황 (영수증리뷰, 구글만) */}
-                {(formData.platform === "영수증리뷰" || formData.platform === "구글") && dailyLimitStatus && (
-                  <div>
-                    {formData.platform} 오늘: <span className={`font-medium ${
-                      dailyLimitStatus.count >= 5 ? 'text-red-600' : 'text-blue-600'
-                    }`}>
-                      {dailyLimitStatus.count}/5
-                    </span>
-                  </div>
+                    <a
+                      href={
+                        isProductPlatform
+                          ? formData.productUrl
+                          : formData.storeUrl
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      링크 이동
+                    </a>
+                  </Button>
                 )}
-                
-                {/* 현재 리뷰에서 내가 신청한 개수 (영수증리뷰, 구글만 5개 제한) */}
-                <div>
-                  현재 리뷰: <span className={`font-medium ${
-                    userReservationCount >= 5 ? 'text-red-600' : 'text-blue-600'
-                  }`}>
-                    {userReservationCount}/5
-                  </span>
-                  <span className="text-xs text-gray-500 ml-1">(진행 중 + 완료 포함)</span>
-                </div>
-                
-                {/* 전체 리뷰에서 내가 진행 중인 예약 상태 (reserved 상태만) */}
-                {/* <div>
-                  전체 진행 중: <span className={`font-medium ${
-                    totalUserReservations >= 5 ? 'text-red-600' : 'text-blue-600'
-                  }`}>
-                    {totalUserReservations}/5
-                  </span>
-                </div> */}
+              </div>
+            </div>
+
+            {/* 리뷰비 (모든 플랫폼) */}
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="reviewFee">리뷰비</Label>
+              <Input
+                id="reviewFee"
+                value={`${Number(formData.reviewFee).toLocaleString()}원`}
+                readOnly
+                className="bg-gray-50"
+              />
+            </div>
+
+            {/* 예약금액 (예약자리뷰만) */}
+            {isReservationReview && (
+              <div className="space-y-2 col-span-2 md:col-span-1">
+                <Label htmlFor="reservationAmount">예약금액</Label>
+                <Input
+                  id="reservationAmount"
+                  value={`${Number(formData.reservationAmount).toLocaleString()}원`}
+                  readOnly
+                  className="bg-gray-50"
+                />
+              </div>
+            )}
+
+            {/* 구매비용 (쿠팡, 스토어만) */}
+            {isProductPlatform && (
+              <div className="space-y-2 col-span-2 md:col-span-1">
+                <Label htmlFor="purchaseCost">구매비용</Label>
+                <Input
+                  id="purchaseCost"
+                  value={`${Number(formData.purchaseCost).toLocaleString()}원`}
+                  readOnly
+                  className="bg-gray-50"
+                />
+              </div>
+            )}
+
+            {/* 일건수 (모든 플랫폼) */}
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="dailyCount">일건수</Label>
+              <Input
+                id="dailyCount"
+                value={formData.dailyCount}
+                readOnly
+                className="bg-gray-50"
+              />
+            </div>
+
+            {/* <div className="space-y-2 col-span-1">
+              <Label>광고주</Label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {selectedProviders.map((provider, index) => (
+                  <div
+                    key={index}
+                    className="bg-gray-100 px-3 py-1 rounded-full text-sm"
+                  >
+                    {provider.full_name}
+                  </div>
+                ))}
+                {selectedProviders.length === 0 && (
+                  <div className="text-gray-500">지정된 광고주가 없습니다</div>
+                )}
+              </div>
+            </div> */}
+
+            {/* <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="startDate">시작일</Label>
+              <Input
+                id="startDate"
+                value={
+                  formData.startDate
+                    ? new Date(formData.startDate).toLocaleString("ko-KR")
+                    : ""
+                }
+                readOnly
+                className="bg-gray-50"
+              />
+            </div> */}
+
+            {/* <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="endDate">종료일</Label>
+              <Input
+                id="endDate"
+                value={
+                  formData.endDate
+                    ? new Date(formData.endDate).toLocaleString("ko-KR")
+                    : ""
+                }
+                readOnly
+                className="bg-gray-50"
+              />
+            </div> */}
+
+            {/* 리뷰 가이드 */}
+            {formData.reviewGuide && (
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="reviewGuide">리뷰 작성 가이드</Label>
+                <Textarea
+                  id="reviewGuide"
+                  value={formData.reviewGuide}
+                  readOnly
+                  rows={4}
+                  className="bg-gray-50"
+                />
               </div>
             )}
           </div>
 
-          {quotas.length > 0 && (
-            <div className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-16 text-center">구좌번호</TableHead>
-                    <TableHead className="text-center">상태</TableHead>
-                    <TableHead className="text-center">오픈일시</TableHead>
-                    <TableHead className="text-center">단계</TableHead>
-                    <TableHead className="text-center">비고</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {quotas.map((quota) => {
-                    // 내가 예약한 구좌인지 확인
-                    const isMyReservation =
-                      quota.reservation_user_id === currentUserId;
+          {/* 구좌 관리 섹션 */}
+          <Separator />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">구좌 정보</h2>
+              {currentUserId && (
+                <div className="flex items-center gap-6 text-sm text-gray-600">
+                  {/* 일일 제한 상황 (영수증리뷰, 구글만) */}
+                  {(formData.platform === "영수증리뷰" || formData.platform === "구글") && dailyLimitStatus && (
+                    <div>
+                      {formData.platform} 오늘: <span className={`font-medium ${
+                        dailyLimitStatus.count >= 5 ? 'text-red-600' : 'text-blue-600'
+                      }`}>
+                        {dailyLimitStatus.count}/5
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* 현재 리뷰에서 내가 신청한 개수 (영수증리뷰, 구글만 5개 제한) */}
+                  <div>
+                    현재 리뷰: <span className={`font-medium ${
+                      userReservationCount >= 5 ? 'text-red-600' : 'text-blue-600'
+                    }`}>
+                      {userReservationCount}/5
+                    </span>
+                    <span className="text-xs text-gray-500 ml-1">(진행 중 + 완료 포함)</span>
+                  </div>
+                  
+                  {/* 전체 리뷰에서 내가 진행 중인 예약 상태 (reserved 상태만) */}
+                  {/* <div>
+                    전체 진행 중: <span className={`font-medium ${
+                      totalUserReservations >= 5 ? 'text-red-600' : 'text-blue-600'
+                    }`}>
+                      {totalUserReservations}/5
+                    </span>
+                  </div> */}
+                </div>
+              )}
+            </div>
 
-                    return (
-                      <TableRow key={quota.id}>
-                        {/* 구좌번호 */}
-                        <TableCell className="text-center font-medium">
-                          {quota.quotaNumber}
-                        </TableCell>
+            {quotas.length > 0 && (
+              <div className="space-y-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16 text-center">구좌번호</TableHead>
+                      <TableHead className="text-center">상태</TableHead>
+                      <TableHead className="text-center">오픈일시</TableHead>
+                      <TableHead className="text-center">단계</TableHead>
+                      <TableHead className="text-center">비고</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quotas.map((quota) => {
+                      // 내가 예약한 구좌인지 확인
+                      const isMyReservation =
+                        quota.reservation_user_id === currentUserId;
 
-                        {/* 상태 */}
-                        <TableCell className="text-center">
-                          {quota?.status === 'unavailable' || 
-                           (quota.status !== 'reserved' && quota.status !== 'complete' && quota.status !== 'available') ? (
-                            <div className="flex items-center justify-center">
-                              <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-500">
-                                미오픈
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center">
-                              <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
-                                오픈
-                              </span>
-                            </div>
-                          )}
-                        </TableCell>
+                      return (
+                        <TableRow key={quota.id}>
+                          {/* 구좌번호 */}
+                          <TableCell className="text-center font-medium">
+                            {quota.quotaNumber}
+                          </TableCell>
 
-                        {/* 오픈일시 */}
-                        <TableCell className="text-center text-sm">
-                          {quota.opened_date 
-                            ? new Date(quota.opened_date).toLocaleDateString("ko-KR")
-                            : "-"
-                          }
-                        </TableCell>
-
-                        {/* 관리 */}
-                        <TableCell className="text-center">
-                          {/* 예약된 상태이고 내 ID가 아닌 경우 우선적으로 신청 불가 표시 */}
-                          {(quota.status === 'reserved' || quota.status === 'complete') && !isMyReservation ? (
-                            <div className="flex items-center justify-center">
-                              <X className="h-5 w-5 text-red-500 mr-1" />
-                              <span className="text-red-500 text-sm font-medium">
-                                신청 불가
-                              </span>
-                            </div>
-                          ) : quota.status === 'complete' && isMyReservation ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="flex items-center">
-                                <CheckCircle className="h-5 w-5 text-green-600 mr-1" />
-                                <span className="text-sm text-green-600">
-                                  제출 완료
+                          {/* 상태 */}
+                          <TableCell className="text-center">
+                            {quota?.status === 'unavailable' || 
+                             (quota.status !== 'reserved' && quota.status !== 'complete' && quota.status !== 'available') ? (
+                              <div className="flex items-center justify-center">
+                                <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-500">
+                                  미오픈
                                 </span>
                               </div>
-                            </div>
-                          ) : quota.status === 'reserved' && isMyReservation ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <div className="flex items-center">
-                                <CheckCircle className="h-5 w-5 text-blue-600 mr-1" />
-                                <span className="text-sm text-blue-600">
-                                  신청 완료
+                            ) : (
+                              <div className="flex items-center justify-center">
+                                <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
+                                  오픈
                                 </span>
                               </div>
-                            </div>
-                          ) : quota.status === 'available' ? (
-                            (() => {
-                              const isDisabled = (formData.platform === "영수증리뷰" || formData.platform === "구글") 
-                                ? (dailyLimitStatus && dailyLimitStatus.count >= 5) || userReservationCount >= 5
-                                : userReservationCount >= 5;
-                              
-                              const buttonText = (formData.platform === "영수증리뷰" || formData.platform === "구글") 
-                                ? (dailyLimitStatus && dailyLimitStatus.count >= 5) 
-                                  ? "일일 한도 초과"
+                            )}
+                          </TableCell>
+
+                          {/* 오픈일시 */}
+                          <TableCell className="text-center text-sm">
+                            {quota.opened_date 
+                              ? new Date(quota.opened_date).toLocaleDateString("ko-KR")
+                              : "-"
+                            }
+                          </TableCell>
+
+                          {/* 관리 */}
+                          <TableCell className="text-center">
+                            {/* 예약된 상태이고 내 ID가 아닌 경우 우선적으로 신청 불가 표시 */}
+                            {(quota.status === 'reserved' || quota.status === 'complete') && !isMyReservation ? (
+                              <div className="flex items-center justify-center">
+                                <X className="h-5 w-5 text-red-500 mr-1" />
+                                <span className="text-red-500 text-sm font-medium">
+                                  신청 불가
+                                </span>
+                              </div>
+                            ) : quota.status === 'complete' && isMyReservation ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="flex items-center">
+                                  <CheckCircle className="h-5 w-5 text-green-600 mr-1" />
+                                  <span className="text-sm text-green-600">
+                                    제출 완료
+                                  </span>
+                                </div>
+                              </div>
+                            ) : quota.status === 'reserved' && isMyReservation ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="flex items-center">
+                                  <CheckCircle className="h-5 w-5 text-blue-600 mr-1" />
+                                  <span className="text-sm text-blue-600">
+                                    신청 완료
+                                  </span>
+                                </div>
+                              </div>
+                            ) : quota.status === 'available' ? (
+                              (() => {
+                                const isDisabled = (formData.platform === "영수증리뷰" || formData.platform === "구글") 
+                                  ? (dailyLimitStatus && dailyLimitStatus.count >= 5) || userReservationCount >= 5
+                                  : userReservationCount >= 5;
+                                
+                                const buttonText = (formData.platform === "영수증리뷰" || formData.platform === "구글") 
+                                  ? (dailyLimitStatus && dailyLimitStatus.count >= 5) 
+                                    ? "일일 한도 초과"
+                                    : userReservationCount >= 5
+                                      ? "리뷰 한도 초과"
+                                      : "리뷰 신청"
                                   : userReservationCount >= 5
                                     ? "리뷰 한도 초과"
-                                    : "리뷰 신청"
-                                : userReservationCount >= 5
-                                  ? "리뷰 한도 초과"
-                                  : "리뷰 신청";
+                                    : "리뷰 신청";
 
-                              return (
+                                return (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={isDisabled}
+                                    onClick={() => !isDisabled && handleReserveSlot(quota)}
+                                    className=""
+                                  >
+                                    {buttonText}
+                                  </Button>
+                                );
+                              })()
+                            ) : (
+                              <span className="text-gray-400 text-sm">
+                                미오픈
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isMyReservation && (quota.status === 'reserved' || quota.status === 'complete') ? (
+                              <div className="flex items-center justify-center gap-2">
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  disabled={isDisabled}
-                                  onClick={() => !isDisabled && handleReserveSlot(quota)}
+                                  onClick={() => handleManageSlot(quota)}
                                   className=""
                                 >
-                                  {buttonText}
+                                  <Pencil className="w-4 h-4 mr-1" />
+                                  {quota.status === 'complete' ? "제출 내역 수정" : "리뷰 작성"}
                                 </Button>
-                              );
-                            })()
-                          ) : (
-                            <span className="text-gray-400 text-sm">
-                              미오픈
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {isMyReservation && (quota.status === 'reserved' || quota.status === 'complete') ? (
-                            <div className="flex items-center justify-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleManageSlot(quota)}
-                                className=""
-                              >
-                                <Pencil className="w-4 h-4 mr-1" />
-                                {quota.status === 'complete' ? "제출 내역 수정" : "리뷰 작성"}
-                              </Button>
-                              {quota.status === 'reserved' && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleCancelReservation(quota)}
-                                      disabled={isCancellingSlot && cancellingSlotId === quota.id}
-                                      className="text-red-600 border-red-300 hover:bg-red-50"
-                                    >
-                                      <X className="w-4 h-4 mr-1" />
-                                      {isCancellingSlot && cancellingSlotId === quota.id ? "취소 중..." : "신청 취소"}
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>리뷰신청을 잘못하였을경우 상태를 다시 활성화하기 위해 취소버튼을 꼭 눌러주세요</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                                {quota.status === 'reserved' && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleCancelReservation(quota)}
+                                        disabled={isCancellingSlot && cancellingSlotId === quota.id}
+                                        className="text-red-600 border-red-300 hover:bg-red-50"
+                                      >
+                                        <X className="w-4 h-4 mr-1" />
+                                        {isCancellingSlot && cancellingSlotId === quota.id ? "취소 중..." : "신청 취소"}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>리뷰신청을 잘못하였을경우 상태를 다시 활성화하기 위해 취소버튼을 꼭 눌러주세요</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 text-sm">-</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-4">
+            <Button type="button" variant="outline" onClick={() => router.back()}>
+              뒤로 가기
+            </Button>
+          </div>
         </div>
 
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()}>
-            뒤로 가기
-          </Button>
-        </div>
+        {/* 리뷰 신청 확인 다이얼로그 */}
+        <AlertDialog
+          open={isReservationDialogOpen}
+          onOpenChange={setIsReservationDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>리뷰 신청 확인</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <div>
+                  {selectedSlot &&
+                    `구좌 #${selectedSlot.quotaNumber}에 대한 리뷰를 신청하시겠습니까?`}
+                </div>
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-orange-600 mb-2">
+                    ⚠️ 신청 전 확인사항
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    리뷰신청은 꼭 리뷰작성이 가능할때 눌러주세요
+                  </p>
+                </div>
+                <div className="text-sm text-gray-600">
+                  신청 후에는 취소가 어려울 수 있습니다.
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isReservingSlot}>
+                취소
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  confirmReservation();
+                }}
+                disabled={isReservingSlot}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isReservingSlot ? "처리 중..." : "신청 확인"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 구좌 관리 다이얼로그 */}
+        <SlotManagementDialog
+          isOpen={isSlotManagementOpen}
+          onOpenChange={setIsSlotManagementOpen}
+          slot={managementSlot}
+          reviewId={reviewId}
+          onSlotUpdate={handleSlotUpdate}
+          submissionHistory={managementSlot?.submissionData || null}
+        />
+        
+        {/* 프로필 검증 다이얼로그 */}
+        <ProfileValidationDialog 
+          isOpen={isProfileValidationOpen}
+          onOpenChange={setIsProfileValidationOpen}
+          missingFields={missingProfileFields}
+        />
       </div>
-
-      {/* 리뷰 신청 확인 다이얼로그 */}
-      <AlertDialog
-        open={isReservationDialogOpen}
-        onOpenChange={setIsReservationDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>리뷰 신청 확인</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <div>
-                {selectedSlot &&
-                  `구좌 #${selectedSlot.quotaNumber}에 대한 리뷰를 신청하시겠습니까?`}
-              </div>
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-orange-600 mb-2">
-                  ⚠️ 신청 전 확인사항
-                </p>
-                <p className="text-sm text-gray-700">
-                  리뷰신청은 꼭 리뷰작성이 가능할때 눌러주세요
-                </p>
-              </div>
-              <div className="text-sm text-gray-600">
-                신청 후에는 취소가 어려울 수 있습니다.
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isReservingSlot}>
-              취소
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                confirmReservation();
-              }}
-              disabled={isReservingSlot}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {isReservingSlot ? "처리 중..." : "신청 확인"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 구좌 관리 다이얼로그 */}
-      <SlotManagementDialog
-        isOpen={isSlotManagementOpen}
-        onOpenChange={setIsSlotManagementOpen}
-        slot={managementSlot}
-        reviewId={reviewId}
-        onSlotUpdate={handleSlotUpdate}
-        submissionHistory={managementSlot?.submissionData || null}
-      />
-      
-      {/* 프로필 검증 다이얼로그 */}
-      <ProfileValidationDialog 
-        isOpen={isProfileValidationOpen}
-        onOpenChange={setIsProfileValidationOpen}
-        missingFields={missingProfileFields}
-      />
-    </div>
     </TooltipProvider>
   );
 }

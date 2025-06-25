@@ -544,7 +544,7 @@ export default function EditReviewPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">이벤트 조회</h1>
+      <h1 className="text-2xl font-bold">캠페인 조회</h1>
 
       <div className="space-y-6 w-full">
         <div className="flex justify-end gap-4"></div>
@@ -579,7 +579,7 @@ export default function EditReviewPage({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2 col-span-2 md:col-span-1">
             <Label htmlFor="platform">플랫폼</Label>
             <Select
@@ -816,7 +816,7 @@ export default function EditReviewPage({
               )}
             </div>
           </div>
-        </div>
+        </div> */}
 
         <Separator className="my-6" />
 

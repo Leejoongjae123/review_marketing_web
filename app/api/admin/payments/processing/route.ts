@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     // 페이지네이션 범위 계산
     const start = (page - 1) * pageSize;
     
-    // 처리중(processing) 데이터 조회
+    // 처리중(processing) 데이터 조회 - review 테이블과 조인하여 플랫폼 정보 포함
     const { data: processingSubmissions, error: processingError } = await supabase
       .from('slot_submissions')
       .select(`
@@ -56,7 +56,10 @@ export async function GET(request: Request) {
         submitted_at,
         updated_at,
         approval,
-        reason
+        reason,
+        reviews(
+          platform
+        )
       `)
       .eq('payment_status', 'processing')
       .order('payment_created_at', { ascending: false })
@@ -93,6 +96,7 @@ export async function GET(request: Request) {
         nickname: submission.nickname,
         user_bank_name: profile.bank_name,
         user_account_number: profile.account_number,
+        platform: submission.reviews?.platform || '-',
         payment_amount: submission.payment_amount,
         payment_status: submission.payment_status,
         payment_created_at: submission.submitted_at,
