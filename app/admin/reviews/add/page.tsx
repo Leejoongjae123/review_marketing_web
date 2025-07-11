@@ -49,8 +49,8 @@ interface Quota {
   id: number;
   quotaNumber: number;
   status: 'available' | 'unavailable';
-  images: { file: File; preview: string; uploadedAt: string }[];
-  receipts: { file: File; preview: string; uploadedAt: string }[];
+  images: { file: File; preview: string; uploadedAt: string; uploadedAtDisplay: string; url?: string }[];
+  receipts: { file: File; preview: string; uploadedAt: string; uploadedAtDisplay: string; url?: string }[];
 }
 
 export default function AddReviewPage() {
@@ -328,44 +328,22 @@ export default function AddReviewPage() {
           setCurrentQuotaIndex(i + 1);
           setSubmissionStatus(`구좌 ${quota.quotaNumber}번을 처리하고 있습니다...`);
 
-          // 구좌 이미지들을 base64로 변환
-          const quotaImageFiles = await Promise.all(
-            quota.images.map(async (image) => {
-              return new Promise<{ base64: string; uploadedAt: string }>((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  resolve({
-                    base64: reader.result as string,
-                    uploadedAt: image.uploadedAt
-                  });
-                };
-                reader.readAsDataURL(image.file);
-              });
-            })
-          );
-
-          const quotaReceiptFiles = await Promise.all(
-            quota.receipts.map(async (receipt) => {
-              return new Promise<{ base64: string; uploadedAt: string }>((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  resolve({
-                    base64: reader.result as string,
-                    uploadedAt: receipt.uploadedAt
-                  });
-                };
-                reader.readAsDataURL(receipt.file);
-              });
-            })
-          );
+          // 업로드된 파일 URL 수집
+          const quotaImageUrls = quota.images
+            .filter(image => image.url) // URL이 있는 것만 필터링
+            .map(image => image.url);
+          
+          const quotaReceiptUrls = quota.receipts
+            .filter(receipt => receipt.url) // URL이 있는 것만 필터링
+            .map(receipt => receipt.url);
 
           // 개별 구좌 API 호출
           const quotaData = {
             reviewId: reviewId,
             quotaNumber: quota.quotaNumber,
             status: quota.status,
-            images: quotaImageFiles,
-            receipts: quotaReceiptFiles
+            imageUrls: quotaImageUrls,
+            receiptUrls: quotaReceiptUrls
           };
 
           const quotaResponse = await fetch('/api/reviews/quotas', {
@@ -582,31 +560,151 @@ export default function AddReviewPage() {
   };
 
   // 구좌별 이미지 첨부 핸들러
-  const handleQuotaImageChange = (quotaId: number, type: 'images' | 'receipts', e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQuotaImageChange = async (quotaId: number, type: 'images' | 'receipts', e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map(file => ({
+      const quota = quotas.find(q => q.id === quotaId);
+      if (!quota) return;
+      
+      const currentCount = quota[type].length;
+      const maxCount = 5;
+      const availableSlots = maxCount - currentCount;
+      
+      if (availableSlots <= 0) {
+        toast({
+          title: "파일 개수 제한",
+          description: `${type === 'images' ? '이미지' : '영수증'}는 최대 ${maxCount}개까지만 첨부할 수 있습니다.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const filesToAdd = Array.from(e.target.files).slice(0, availableSlots);
+      const now = new Date();
+      
+      // 먼저 임시 파일들을 상태에 추가 (로딩 상태 표시용)
+      const tempFiles = filesToAdd.map(file => ({
         file,
         preview: URL.createObjectURL(file),
-        uploadedAt: new Date().toLocaleString('ko-KR', {
+        uploadedAt: now.toISOString(),
+        uploadedAtDisplay: now.toLocaleString('ko-KR', {
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit'
-        })
+        }),
+        url: '' // 아직 업로드되지 않음
       }));
       
       setQuotas(prev => prev.map(quota => 
         quota.id === quotaId 
-          ? { ...quota, [type]: [...quota[type], ...newFiles] }
+          ? { ...quota, [type]: [...quota[type], ...tempFiles] }
           : quota
       ));
+      
+      // 파일들을 하나씩 업로드
+      for (let i = 0; i < filesToAdd.length; i++) {
+        const file = filesToAdd[i];
+        const tempFileIndex = currentCount + i;
+        
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('quotaId', quotaId.toString());
+          formData.append('type', type);
+          
+          const response = await fetch('/api/upload/slot-files', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '파일 업로드 실패');
+          }
+          
+          const result = await response.json();
+          
+          // 업로드 성공 시 URL 업데이트
+          setQuotas(prev => prev.map(quota => {
+            if (quota.id === quotaId) {
+              const newFiles = [...quota[type]];
+              if (newFiles[tempFileIndex]) {
+                newFiles[tempFileIndex] = {
+                  ...newFiles[tempFileIndex],
+                  url: result.url
+                };
+              }
+              return { ...quota, [type]: newFiles };
+            }
+            return quota;
+          }));
+          
+        } catch (error) {
+          console.error(`파일 업로드 오류 (${file.name}):`, error);
+          
+          // 업로드 실패 시 해당 파일 제거
+          setQuotas(prev => prev.map(quota => {
+            if (quota.id === quotaId) {
+              const newFiles = [...quota[type]];
+              newFiles.splice(tempFileIndex, 1);
+              return { ...quota, [type]: newFiles };
+            }
+            return quota;
+          }));
+          
+          toast({
+            title: "파일 업로드 실패",
+            description: `${file.name} 파일 업로드에 실패했습니다.`,
+            variant: "destructive",
+          });
+        }
+      }
+      
+      if (filesToAdd.length < e.target.files.length) {
+        toast({
+          title: "일부 파일만 추가됨",
+          description: `최대 ${maxCount}개까지만 첨부할 수 있어서 ${filesToAdd.length}개 파일만 추가되었습니다.`,
+          variant: "destructive",
+        });
+      }
     }
   };
 
   // 구좌별 이미지/영수증 제거 핸들러
-  const handleRemoveQuotaFile = (quotaId: number, type: 'images' | 'receipts', fileIndex: number) => {
+  const handleRemoveQuotaFile = async (quotaId: number, type: 'images' | 'receipts', fileIndex: number) => {
+    const quota = quotas.find(q => q.id === quotaId);
+    if (!quota) return;
+    
+    const fileToRemove = quota[type][fileIndex];
+    
+    // Storage에서 파일 삭제 (URL이 있는 경우에만)
+    if (fileToRemove.url) {
+      try {
+        // URL에서 파일 경로 추출
+        const urlParts = fileToRemove.url.split('/');
+        const filePath = urlParts[urlParts.length - 1];
+        
+        const response = await fetch('/api/upload/slot-files/delete', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filePath: filePath
+          }),
+        });
+        
+        if (!response.ok) {
+          console.error('Storage 파일 삭제 실패');
+        }
+      } catch (error) {
+        console.error('Storage 파일 삭제 오류:', error);
+      }
+    }
+    
+    // 로컬 상태에서 파일 제거
     setQuotas(prev => prev.map(quota => {
       if (quota.id === quotaId) {
         const newFiles = [...quota[type]];
@@ -1088,32 +1186,58 @@ export default function AddReviewPage() {
                       
                       {/* 이미지 셀 */}
                       <TableCell className="border-r">
-                        <div 
-                          className="min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors cursor-pointer flex flex-col items-center justify-center border-gray-300 hover:border-primary"
-                          onClick={() => handleAddQuotaFile(quota.id, 'images')}
-                        >
-                          <input
-                            type="file"
-                            ref={(el) => {
-                              quotaFileInputRefs.current[`${quota.id}-images`] = el;
-                            }}
-                            className="hidden"
-                            accept="image/*"
-                            multiple
-                            onChange={(e) => handleQuotaImageChange(quota.id, 'images', e)}
-                          />
-                          
-                          {quota.images.length > 0 ? (
-                            <div className="flex flex-wrap gap-1 justify-center w-full">
-                              {quota.images.map((image, imageIndex) => (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">
+                              이미지 ({quota.images.length}/5)
+                            </span>
+                            {quota.images.length >= 5 && (
+                              <span className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded">
+                                최대
+                              </span>
+                            )}
+                          </div>
+                          <div 
+                            className={`min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors flex flex-col items-center justify-center ${
+                              quota.images.length >= 5 
+                                ? 'border-gray-200 cursor-not-allowed opacity-50' 
+                                : 'border-gray-300 hover:border-primary cursor-pointer'
+                            }`}
+                            onClick={() => quota.images.length < 5 && handleAddQuotaFile(quota.id, 'images')}
+                          >
+                            <input
+                              type="file"
+                              ref={(el) => {
+                                quotaFileInputRefs.current[`${quota.id}-images`] = el;
+                              }}
+                              className="hidden"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => handleQuotaImageChange(quota.id, 'images', e)}
+                            />
+                            
+                            {quota.images.length > 0 ? (
+                              <div className="flex flex-wrap gap-1 justify-center w-full">
+                                                              {quota.images.map((image, imageIndex) => (
                                 <div key={imageIndex} className="relative group">
-                                  <div className="w-12 h-12 relative rounded-lg overflow-hidden border">
+                                  <div className={`w-12 h-12 relative rounded-lg overflow-hidden border ${
+                                    image.url ? 'border-green-300' : 'border-gray-300'
+                                  }`}>
                                     <Image
                                       src={image.preview}
                                       alt={`구좌 ${quota.quotaNumber} 이미지 ${imageIndex + 1}`}
                                       fill
                                       className="object-cover"
                                     />
+                                    {/* 업로드 상태 표시 */}
+                                    {!image.url && (
+                                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                      </div>
+                                    )}
+                                    {image.url && (
+                                      <div className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full"></div>
+                                    )}
                                   </div>
                                   <button
                                     type="button"
@@ -1127,46 +1251,73 @@ export default function AddReviewPage() {
                                   </button>
                                 </div>
                               ))}
-                            </div>
-                          ) : (
-                            <div className="text-center">
-                              <Plus className="h-6 w-6 mx-auto mb-1 text-gray-400" />
-                              <span className="text-xs text-gray-500">
-                                이미지 첨부
-                              </span>
-                            </div>
-                          )}
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <Plus className="h-6 w-6 mx-auto mb-1 text-gray-400" />
+                                <span className="text-xs text-gray-500">
+                                  이미지 첨부
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       
                       {/* 영수증 셀 */}
                       <TableCell className="border-r">
-                        <div 
-                          className="min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors cursor-pointer flex flex-col items-center justify-center border-gray-300 hover:border-primary"
-                          onClick={() => handleAddQuotaFile(quota.id, 'receipts')}
-                        >
-                          <input
-                            type="file"
-                            ref={(el) => {
-                              quotaFileInputRefs.current[`${quota.id}-receipts`] = el;
-                            }}
-                            className="hidden"
-                            accept="image/*"
-                            multiple
-                            onChange={(e) => handleQuotaImageChange(quota.id, 'receipts', e)}
-                          />
-                          
-                          {quota.receipts.length > 0 ? (
-                            <div className="flex flex-wrap gap-1 justify-center w-full">
-                              {quota.receipts.map((receipt, receiptIndex) => (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">
+                              영수증 ({quota.receipts.length}/5)
+                            </span>
+                            {quota.receipts.length >= 5 && (
+                              <span className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded">
+                                최대
+                              </span>
+                            )}
+                          </div>
+                          <div 
+                            className={`min-h-[60px] border-2 border-dashed rounded-lg p-2 transition-colors flex flex-col items-center justify-center ${
+                              quota.receipts.length >= 5 
+                                ? 'border-gray-200 cursor-not-allowed opacity-50' 
+                                : 'border-gray-300 hover:border-primary cursor-pointer'
+                            }`}
+                            onClick={() => quota.receipts.length < 5 && handleAddQuotaFile(quota.id, 'receipts')}
+                          >
+                            <input
+                              type="file"
+                              ref={(el) => {
+                                quotaFileInputRefs.current[`${quota.id}-receipts`] = el;
+                              }}
+                              className="hidden"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => handleQuotaImageChange(quota.id, 'receipts', e)}
+                            />
+                            
+                            {quota.receipts.length > 0 ? (
+                              <div className="flex flex-wrap gap-1 justify-center w-full">
+                                                              {quota.receipts.map((receipt, receiptIndex) => (
                                 <div key={receiptIndex} className="relative group">
-                                  <div className="w-12 h-12 relative rounded-lg overflow-hidden border">
+                                  <div className={`w-12 h-12 relative rounded-lg overflow-hidden border ${
+                                    receipt.url ? 'border-green-300' : 'border-gray-300'
+                                  }`}>
                                     <Image
                                       src={receipt.preview}
                                       alt={`구좌 ${quota.quotaNumber} 영수증 ${receiptIndex + 1}`}
                                       fill
                                       className="object-cover"
                                     />
+                                    {/* 업로드 상태 표시 */}
+                                    {!receipt.url && (
+                                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                      </div>
+                                    )}
+                                    {receipt.url && (
+                                      <div className="absolute top-0 right-0 w-3 h-3 bg-green-500 rounded-full"></div>
+                                    )}
                                   </div>
                                   <button
                                     type="button"
@@ -1180,50 +1331,65 @@ export default function AddReviewPage() {
                                   </button>
                                 </div>
                               ))}
-                            </div>
-                          ) : (
-                            <div className="text-center">
-                              <Plus className="h-6 w-6 mx-auto mb-1 text-gray-400" />
-                              <span className="text-xs text-gray-500">
-                                영수증 첨부
-                              </span>
-                            </div>
-                          )}
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <Plus className="h-6 w-6 mx-auto mb-1 text-gray-400" />
+                                <span className="text-xs text-gray-500">
+                                  영수증 첨부
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       
-                      {/* 작성일시 셀 */}
-                      <TableCell className="text-center">
-                        <div className="space-y-2">
-                          {/* 이미지 작성일시 */}
-                          {quota.images.length > 0 && (
-                            <div>
-                              <div className="text-xs font-medium text-blue-600 mb-1">이미지</div>
-                              {quota.images.map((image, imageIndex) => (
-                                <div key={imageIndex} className="text-xs text-gray-600 mb-1">
-                                  {image.uploadedAt}
+                                                {/* 작성일시 셀 */}
+                          <TableCell className="text-center">
+                            <div className="space-y-2">
+                              {/* 이미지 작성일시 */}
+                              {quota.images.length > 0 && (
+                                <div>
+                                  <div className="text-xs font-medium text-blue-600 mb-1">
+                                    이미지 ({quota.images.filter(img => img.url).length}/{quota.images.length})
+                                  </div>
+                                  {quota.images.map((image, imageIndex) => (
+                                    <div key={imageIndex} className="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
+                                      {image.url ? (
+                                        <span className="text-green-600">✓</span>
+                                      ) : (
+                                        <span className="text-orange-600">⏳</span>
+                                      )}
+                                      {image.uploadedAtDisplay}
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                          
-                          {/* 영수증 작성일시 */}
-                          {quota.receipts.length > 0 && (
-                            <div>
-                              <div className="text-xs font-medium text-green-600 mb-1">영수증</div>
-                              {quota.receipts.map((receipt, receiptIndex) => (
-                                <div key={receiptIndex} className="text-xs text-gray-600 mb-1">
-                                  {receipt.uploadedAt}
+                              )}
+                              
+                              {/* 영수증 작성일시 */}
+                              {quota.receipts.length > 0 && (
+                                <div>
+                                  <div className="text-xs font-medium text-green-600 mb-1">
+                                    영수증 ({quota.receipts.filter(r => r.url).length}/{quota.receipts.length})
+                                  </div>
+                                  {quota.receipts.map((receipt, receiptIndex) => (
+                                    <div key={receiptIndex} className="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
+                                      {receipt.url ? (
+                                        <span className="text-green-600">✓</span>
+                                      ) : (
+                                        <span className="text-orange-600">⏳</span>
+                                      )}
+                                      {receipt.uploadedAtDisplay}
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
+                              )}
+                              
+                              {quota.images.length === 0 && quota.receipts.length === 0 && (
+                                <span className="text-sm text-gray-400">-</span>
+                              )}
                             </div>
-                          )}
-                          
-                          {quota.images.length === 0 && quota.receipts.length === 0 && (
-                            <span className="text-sm text-gray-400">-</span>
-                          )}
-                        </div>
-                      </TableCell>
+                          </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
