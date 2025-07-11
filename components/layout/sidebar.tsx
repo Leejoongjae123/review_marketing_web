@@ -200,7 +200,7 @@ export default function Sidebar({ role, menuItems }: SidebarProps) {
   };
 
   const handleKaKaoRequest = () => {
-    window.open("http://pf.kakao.com/_kmxsn/chat", "_blank");
+    window.open("http://pf.kakao.com/_kMXSn/chat", "_blank");
   };
 
   // 인증 관련 버튼 렌더링
