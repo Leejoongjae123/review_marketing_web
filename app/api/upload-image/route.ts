@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
+// API 라우트 설정 - 요청 크기 제한 증가
+export const runtime = 'nodejs';
+export const maxDuration = 60; // 최대 실행 시간 60초
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();

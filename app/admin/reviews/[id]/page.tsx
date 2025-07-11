@@ -43,6 +43,7 @@ import Image from "next/image";
 import { toast } from "@/components/ui/use-toast";
 import { MultiProviderSelector, Provider } from "@/components/MultiProviderSelector";
 import {Spinner} from "@/components/ui/spinner";
+import { compressImage, fileToBase64, getFileSizeInMB, uploadImagesSequentially } from "@/utils/imageUtils";
 // 참여자 타입 정의
 interface Participant {
   id: number;
@@ -65,15 +66,7 @@ interface Quota {
   openedDate?: string; // 슬롯이 오픈된 날짜
 }
 
-// 파일을 base64로 변환하는 함수
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
-};
+// 파일을 base64로 변환하는 함수는 @/utils/imageUtils에서 import
 
 export default function EditReviewPage() {
   const router = useRouter();
@@ -121,6 +114,7 @@ export default function EditReviewPage() {
   const [newParticipantImages, setNewParticipantImages] = useState<{ file: File; preview: string }[]>([]);
   const newParticipantFileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>("");
   const [selectedProviders, setSelectedProviders] = useState<Provider[]>([]);
   
   // 구좌 관련 상태
@@ -373,16 +367,35 @@ export default function EditReviewPage() {
       // 제품 이미지 업로드 처리
       let imageUrls: string[] = [];
       
-      // 새로 추가된 제품 이미지들을 base64로 변환
-      for (const image of images) {
-        // 기존 파일이 아닌 새로 업로드된 파일만 처리
+      // 새로 추가된 제품 이미지들을 압축하여 개별 업로드
+      const newImages = images.filter(image => {
         const isNewFile = image.file.size > 0 && 
                          !image.file.name.startsWith('existing-') && 
                          image.file.type.startsWith('image/');
+        return isNewFile;
+      });
+
+      if (newImages.length > 0) {
+        const newImageFiles = newImages.map(img => img.file);
         
-        if (isNewFile) {
+        setUploadProgress(`제품 이미지 업로드 중... (0/${newImageFiles.length})`);
+        
+        // 이미지 크기 확인 및 압축
+        for (let i = 0; i < newImageFiles.length; i++) {
+          const file = newImageFiles[i];
+          setUploadProgress(`제품 이미지 업로드 중... (${i + 1}/${newImageFiles.length})`);
+          
           try {
-            const base64 = await fileToBase64(image.file);
+            const fileSizeInMB = getFileSizeInMB(file);
+            console.log(`이미지 크기: ${fileSizeInMB.toFixed(2)}MB`);
+            
+            // 이미지 압축 (800x600, 품질 0.8)
+            const compressedFile = await compressImage(file, 800, 600, 0.8);
+            const compressedSizeInMB = getFileSizeInMB(compressedFile);
+            console.log(`압축 후 크기: ${compressedSizeInMB.toFixed(2)}MB`);
+            
+            // 압축된 이미지를 base64로 변환
+            const base64 = await fileToBase64(compressedFile);
             
             // 제품 이미지 업로드 API 호출
             const uploadResponse = await fetch('/api/upload-image', {
@@ -404,22 +417,43 @@ export default function EditReviewPage() {
             }
           } catch (error) {
             console.error('제품 이미지 업로드 실패:', error);
+            toast({
+              title: "이미지 업로드 실패",
+              description: "일부 이미지 업로드에 실패했습니다. 다시 시도해주세요.",
+              variant: "destructive",
+            });
           }
-        } else if (image.file.name.startsWith('existing-')) {
-          // 기존 이미지는 현재 URL을 그대로 사용
-          imageUrls.push(image.preview);
         }
+        setUploadProgress("");
       }
 
-      // 구좌 데이터 준비 - 새로 추가된 파일만 전송
-      const quotasData = await Promise.all(quotas.map(async (quota) => {
+      // 기존 이미지 URL 유지
+      const existingImages = images.filter(image => image.file.name.startsWith('existing-'));
+      existingImages.forEach(image => {
+        imageUrls.push(image.preview);
+      });
+
+      // 구좌 데이터 준비 - 새로 추가된 파일만 압축하여 전송
+      const quotasWithNewFiles = quotas.filter(quota => {
+        const hasNewImages = quota.images.some(img => 
+          img.file.size > 0 && !img.file.name.startsWith('existing-') && img.file.type.startsWith('image/'));
+        const hasNewReceipts = quota.receipts.some(receipt => 
+          receipt.file.size > 0 && !receipt.file.name.startsWith('existing-') && receipt.file.type.startsWith('image/'));
+        return hasNewImages || hasNewReceipts;
+      });
+      
+      if (quotasWithNewFiles.length > 0) {
+        setUploadProgress(`구좌 데이터 업로드 중... (0/${quotasWithNewFiles.length})`);
+      }
+      
+      const quotasData = await Promise.all(quotas.map(async (quota, index) => {
         const quotaData: any = {
           quotaNumber: quota.quotaNumber,
           images: [],
           receipts: []
         };
 
-        // 새로 추가된 이미지들만 base64로 변환
+        // 새로 추가된 이미지들만 압축하여 base64로 변환
         for (const image of quota.images) {
           // 기존 파일이 아닌 새로 업로드된 파일만 처리
           const isNewFile = image.file.size > 0 && 
@@ -428,15 +462,28 @@ export default function EditReviewPage() {
           
           if (isNewFile) {
             try {
-              const base64 = await fileToBase64(image.file);
+              const fileSizeInMB = getFileSizeInMB(image.file);
+              console.log(`구좌 ${quota.quotaNumber} 이미지 크기: ${fileSizeInMB.toFixed(2)}MB`);
+              
+              // 이미지 압축 (800x600, 품질 0.8)
+              const compressedFile = await compressImage(image.file, 800, 600, 0.8);
+              const compressedSizeInMB = getFileSizeInMB(compressedFile);
+              console.log(`구좌 ${quota.quotaNumber} 압축 후 크기: ${compressedSizeInMB.toFixed(2)}MB`);
+              
+              const base64 = await fileToBase64(compressedFile);
               quotaData.images.push({ base64 });
             } catch (error) {
-              console.error('이미지 변환 실패:', error);
+              console.error('이미지 압축 실패:', error);
+              toast({
+                title: "이미지 압축 실패",
+                description: `구좌 ${quota.quotaNumber}의 이미지 압축에 실패했습니다.`,
+                variant: "destructive",
+              });
             }
           }
         }
 
-        // 새로 추가된 영수증들만 base64로 변환
+        // 새로 추가된 영수증들만 압축하여 base64로 변환
         for (const receipt of quota.receipts) {
           // 기존 파일이 아닌 새로 업로드된 파일만 처리
           const isNewFile = receipt.file.size > 0 && 
@@ -445,16 +492,37 @@ export default function EditReviewPage() {
           
           if (isNewFile) {
             try {
-              const base64 = await fileToBase64(receipt.file);
+              const fileSizeInMB = getFileSizeInMB(receipt.file);
+              console.log(`구좌 ${quota.quotaNumber} 영수증 크기: ${fileSizeInMB.toFixed(2)}MB`);
+              
+              // 영수증 압축 (800x600, 품질 0.8)
+              const compressedFile = await compressImage(receipt.file, 800, 600, 0.8);
+              const compressedSizeInMB = getFileSizeInMB(compressedFile);
+              console.log(`구좌 ${quota.quotaNumber} 영수증 압축 후 크기: ${compressedSizeInMB.toFixed(2)}MB`);
+              
+              const base64 = await fileToBase64(compressedFile);
               quotaData.receipts.push({ base64 });
             } catch (error) {
-              console.error('영수증 변환 실패:', error);
+              console.error('영수증 압축 실패:', error);
+              toast({
+                title: "영수증 압축 실패",
+                description: `구좌 ${quota.quotaNumber}의 영수증 압축에 실패했습니다.`,
+                variant: "destructive",
+              });
             }
           }
         }
 
+        // 구좌에 새로운 파일이 있는 경우 진행 상황 업데이트
+        if (quotasWithNewFiles.includes(quota)) {
+          const progressIndex = quotasWithNewFiles.indexOf(quota) + 1;
+          setUploadProgress(`구좌 데이터 업로드 중... (${progressIndex}/${quotasWithNewFiles.length})`);
+        }
+        
         return quotaData;
       }));
+      
+      setUploadProgress("");
 
       // JSON 데이터 준비
       const requestData = {
@@ -1536,7 +1604,7 @@ export default function EditReviewPage() {
             type="submit" 
             disabled={isSubmitting || !formData.startDate || !formData.endDate}
           >
-            {isSubmitting ? "수정 중..." : "수정"}
+            {isSubmitting ? (uploadProgress || "수정 중...") : "수정"}
           </Button>
         </div>
       </form>

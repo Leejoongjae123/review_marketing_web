@@ -2,6 +2,10 @@ import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
+// API 라우트 설정 - 요청 크기 제한 증가
+export const runtime = 'nodejs';
+export const maxDuration = 60; // 최대 실행 시간 60초
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
