@@ -7,7 +7,7 @@ import { RiKakaoTalkFill } from "react-icons/ri";
 
 export default function Home() {
   const handleKaKaoRequest = () => {
-    window.open("http://pf.kakao.com/_kmxsn/chat", "_blank");
+    window.open("http://pf.kakao.com/_kMXSn/chat", "_blank");
   };
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">

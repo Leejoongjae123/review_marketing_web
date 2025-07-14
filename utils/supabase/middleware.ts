@@ -67,9 +67,9 @@ export const updateSession = async (request: NextRequest) => {
       return NextResponse.redirect(new URL("/client/auth", request.url));
     }
 
-    // Redirect logged in users from auth page
+    // 로그인된 사용자가 auth 페이지에 접근하면 client/notice로 리디렉션
     if (request.nextUrl.pathname === "/client/auth" && user) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/client/notice", request.url));
     }
 
     // Redirect users who are not logged in from client/reviews or client/participation

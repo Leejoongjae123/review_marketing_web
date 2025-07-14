@@ -7,7 +7,9 @@ import { RiKakaoTalkFill } from "react-icons/ri";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, LogOut, Home } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
 
 // AuthContent 컴포넌트 분리
 function AuthContent() {
