@@ -58,7 +58,8 @@ export async function GET(request: Request) {
         approval,
         reason,
         reviews(
-          platform
+          platform,
+          review_fee
         )
       `)
       .eq('payment_status', 'processing')
@@ -97,7 +98,8 @@ export async function GET(request: Request) {
         user_bank_name: profile.bank_name,
         user_account_number: profile.account_number,
         platform: submission.reviews?.platform || '-',
-        payment_amount: submission.payment_amount,
+        review_fee: submission.reviews?.review_fee || 0,
+        payment_amount: submission.reviews?.review_fee || 0,
         payment_status: submission.payment_status,
         payment_created_at: submission.submitted_at,
         payment_processed_at: submission.payment_processed_at,
@@ -106,7 +108,7 @@ export async function GET(request: Request) {
         reason: submission.reason,
         admin_id: submission.admin_id,
         // 호환성을 위한 필드들
-        amount: submission.payment_amount,
+        amount: submission.reviews?.review_fee || 0,
         status: submission.payment_status,
         createdAt: submission.submitted_at,
         updatedAt: submission.updated_at,

@@ -194,7 +194,7 @@ export default function ProcessedPaymentsTable({
                 <TableCell>{payment.bank || payment.user_bank_name || '-'}</TableCell>
                 <TableCell>{payment.accountNumber || payment.user_account_number || '-'}</TableCell>
                 <TableCell>{payment.platform || '-'}</TableCell>
-                <TableCell>{formatAmountKRW(payment.amount || payment.payment_amount || 0)}</TableCell>
+                                  <TableCell>{formatAmountKRW(payment.review_fee || payment.amount || payment.payment_amount || 0)}</TableCell>
                 <TableCell>{formatDateTime(payment.createdAt || payment.payment_created_at || '')}</TableCell>
                 <TableCell>{formatDateTime(payment.updatedAt || payment.payment_processed_at || '')}</TableCell>
                 <TableCell>{getStatusBadge(payment.status || payment.payment_status || '')}</TableCell>

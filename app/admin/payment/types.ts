@@ -13,6 +13,7 @@ export interface Payment {
   // 리뷰 정보 (reviews 테이블에서 조인)
   review_title?: string;
   platform?: string;
+  review_fee?: number;
   
   // 정산 정보 (slot_submissions 테이블)
   payment_amount: number;

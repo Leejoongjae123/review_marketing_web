@@ -106,7 +106,7 @@ export default function PendingPaymentsTable({
                   <TableCell>{payment.user_bank_name || '-'}</TableCell>
                   <TableCell>{payment.user_account_number || '-'}</TableCell>
                   <TableCell>{payment.platform || '-'}</TableCell>
-                  <TableCell>{typeof payment.payment_amount === 'number' && !isNaN(payment.payment_amount) ? new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(payment.payment_amount) : '-'}</TableCell>
+                  <TableCell>{typeof (payment.review_fee ?? payment.payment_amount) === 'number' && !isNaN(payment.review_fee ?? payment.payment_amount) ? new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(payment.review_fee ?? payment.payment_amount) : '-'}</TableCell>
                   <TableCell>
                     {payment.payment_created_at && !isNaN(new Date(payment.payment_created_at).getTime()) ? 
                     new Date(payment.payment_created_at).toLocaleDateString('ko-KR', {
