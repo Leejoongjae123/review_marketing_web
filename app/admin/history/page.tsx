@@ -363,7 +363,7 @@ export default function AdminHistoryPage() {
                     </Link>
                   </td>
                   <td className="p-4 text-center">
-                    {participant.reviews.review_fee.toLocaleString()}원
+                    {(participant.reviews.review_fee || 0).toLocaleString()}원
                   </td>
                   <td className="p-4 text-center">
                     {participant.user_images && participant.user_images.length > 0 ? (
@@ -553,7 +553,7 @@ export default function AdminHistoryPage() {
                     <Label htmlFor="price" className="text-xs">가격</Label>
                     <Input
                       id="price"
-                      value={`${selectedParticipant.reviews.price.toLocaleString()}원`}
+                      value={`${(selectedParticipant.reviews.price || 0).toLocaleString()}원`}
                       readOnly
                       className="text-sm"
                     />
@@ -562,7 +562,7 @@ export default function AdminHistoryPage() {
                     <Label htmlFor="shippingFee" className="text-xs">배송비</Label>
                     <Input
                       id="shippingFee"
-                      value={`${selectedParticipant.reviews.shipping_fee.toLocaleString()}원`}
+                      value={`${(selectedParticipant.reviews.shipping_fee || 0).toLocaleString()}원`}
                       readOnly
                       className="text-sm"
                     />
@@ -589,7 +589,7 @@ export default function AdminHistoryPage() {
                     <Label htmlFor="reviewFee" className="text-xs">리뷰비</Label>
                     <Input
                       id="reviewFee"
-                      value={`${selectedParticipant.reviews.review_fee.toLocaleString()}원`}
+                      value={`${(selectedParticipant.reviews.review_fee || 0).toLocaleString()}원`}
                       readOnly
                       className="text-sm"
                     />
@@ -610,7 +610,7 @@ export default function AdminHistoryPage() {
                 <Label htmlFor="paymentStatus">정산상태</Label>
                 <Input
                   id="paymentStatus"
-                  value={`${selectedParticipant.payment_status} (${selectedParticipant.payment_amount.toLocaleString()}원)`}
+                  value={`${selectedParticipant.payment_status} (${(selectedParticipant.payment_amount || 0).toLocaleString()}원)`}
                   readOnly
                   className=""
                 />
