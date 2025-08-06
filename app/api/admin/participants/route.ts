@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     // 기본 쿼리 설정
     let query = supabase
-      .from('review_participants')
+      .from('slot_submissions')
       .select(`
         *,
         reviews:review_id (
@@ -34,24 +34,29 @@ export async function GET(request: NextRequest) {
           seller,
           period,
           image_url,
-          product_url
+          product_url,
+          review_fee
         )
       `, { count: 'exact' });
     
     // 검색어가 있는 경우 필터 추가
     if (searchTerm) {
-      if (searchCategory === 'product_name') {
+      if (searchCategory === 'name') {
+        query = query.ilike('name', `%${searchTerm}%`);
+      } else if (searchCategory === 'phone') {
+        query = query.ilike('phone', `%${searchTerm}%`);
+      } else if (searchCategory === 'nickname') {
+        query = query.ilike('nickname', `%${searchTerm}%`);
+      } else if (searchCategory === 'product_name') {
         query = query.ilike('reviews.product_name', `%${searchTerm}%`);
       } else if (searchCategory === 'platform') {
         query = query.ilike('reviews.platform', `%${searchTerm}%`);
-      } else if (searchCategory === 'event_account') {
-        query = query.ilike('event_account', `%${searchTerm}%`);
       }
     }
     
     // 범위 지정하여 데이터 가져오기
     const { data: participants, count, error } = await query
-      .order('created_at', { ascending: false })
+      .order('submitted_at', { ascending: false })
       .range(start, end);
     
     if (error) {

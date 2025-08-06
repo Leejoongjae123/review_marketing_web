@@ -38,27 +38,18 @@ import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { Spinner } from "@/components/ui/spinner";
 
-// slot_submissions 테이블에 맞는 타입 정의
-interface SlotSubmission {
+// 페이지 컴포넌트에서 필요한 UserHistory 타입 선언
+interface ReviewParticipant {
   id: string;
-  slot_id: string;
-  user_id: string;
   name: string;
   phone: string;
+  login_account: string;
+  event_account: string;
   nickname: string;
-  user_images: string[];
-  submitted_at: string;
+  review_image: string | null;
+  created_at: string;
   updated_at: string | null;
   review_id: string;
-  approval: boolean;
-  payment_status: string;
-  payment_amount: number;
-  payment_processed_at: string | null;
-  payment_note: string | null;
-  payment_method: string;
-  admin_id: string | null;
-  payment_created_at: string;
-  reason: string | null;
   reviews: {
     id: string;
     title: string;
@@ -69,12 +60,11 @@ interface SlotSubmission {
     shipping_fee: number;
     seller: string;
     period: string;
-    review_fee: number;
   };
 }
 
 interface ApiResponse {
-  participants: SlotSubmission[];
+  participants: ReviewParticipant[];
   totalCount: number;
   currentPage: number;
   pageSize: number;
@@ -85,10 +75,10 @@ interface ApiResponse {
 export default function AdminHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchCategory, setSearchCategory] = useState("name");
-  const [participants, setParticipants] = useState<SlotSubmission[]>([]);
+  const [participants, setParticipants] = useState<ReviewParticipant[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedParticipant, setSelectedParticipant] = useState<SlotSubmission | null>(null);
+  const [selectedParticipant, setSelectedParticipant] = useState<ReviewParticipant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -144,7 +134,7 @@ export default function AdminHistoryPage() {
     fetchParticipants(true);
   };
 
-  const handleRowClick = (participant: SlotSubmission) => {
+  const handleRowClick = (participant: ReviewParticipant) => {
     setSelectedParticipant(participant);
     setIsModalOpen(true);
   };
@@ -165,11 +155,11 @@ export default function AdminHistoryPage() {
       participant.id,
       participant.name,
       participant.phone,
-      participant.nickname,
-      participant.nickname,
+      participant.login_account,
+      participant.event_account,
       participant.reviews.title,
-      participant.approval ? "승인" : "대기중",
-      new Date(participant.submitted_at).toLocaleString(),
+      "완료", // 기본값으로 완료 상태 설정
+      new Date(participant.created_at).toLocaleString(),
     ]);
 
     const csvContent = [
@@ -222,7 +212,31 @@ export default function AdminHistoryPage() {
     }
   };
 
-
+  // 상태값에 따른 스타일 및 텍스트 가져오기 (현재는 모두 완료 상태로 처리)
+  const getStatusStyle = (status: string = "completed") => {
+    switch (status) {
+      case "completed":
+        return {
+          className: "bg-green-100 text-green-800",
+          text: "완료"
+        };
+      case "pending":
+        return {
+          className: "bg-yellow-100 text-yellow-800",
+          text: "대기중"
+        };
+      case "canceled":
+        return {
+          className: "bg-red-100 text-red-800",
+          text: "취소"
+        };
+      default:
+        return {
+          className: "bg-gray-100 text-gray-800",
+          text: "알수없음"
+        };
+    }
+  };
 
   // 이미지 클릭 핸들러
   const handleImageClick = (imageUrl: string, e: React.MouseEvent) => {
@@ -251,9 +265,8 @@ export default function AdminHistoryPage() {
             <SelectContent>
               <SelectItem value="name">이름</SelectItem>
               <SelectItem value="phone">연락처</SelectItem>
-              <SelectItem value="nickname">닉네임</SelectItem>
-              <SelectItem value="product_name">상품명</SelectItem>
-              <SelectItem value="platform">플랫폼</SelectItem>
+              <SelectItem value="email">이메일</SelectItem>
+              <SelectItem value="eventAccount">참여계정</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -296,6 +309,9 @@ export default function AdminHistoryPage() {
         <table className="w-full min-w-[800px]">
           <thead>
             <tr className="border-b bg-muted/50">
+              <th className="h-12 px-4 text-center align-middle font-medium w-[80px]">
+                번호
+              </th>
               <th className="h-12 px-4 text-center align-middle font-medium w-[120px]">
                 이름
               </th>
@@ -303,16 +319,13 @@ export default function AdminHistoryPage() {
                 연락처
               </th>
               <th className="h-12 px-4 text-center align-middle font-medium w-[200px]">
-                닉네임
+                이메일
               </th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-[150px]">
-                승인상태
+              <th className="h-12 px-4 text-center align-middle font-medium w-[200px]">
+                참여계정
               </th>
               <th className="h-12 px-4 text-center align-middle font-medium w-[200px]">
                 참여 이벤트
-              </th>
-              <th className="h-12 px-4 text-center align-middle font-medium w-[120px]">
-                리뷰비
               </th>
               <th className="h-12 px-4 text-center align-middle font-medium w-[120px]">
                 리뷰이미지
@@ -322,7 +335,7 @@ export default function AdminHistoryPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="p-4 text-center">
+                <td colSpan={8} className="p-4 text-center">
                   <div className="flex justify-center items-center h-40">
                     <Spinner size="lg" className="text-primary" />
                   </div>
@@ -330,7 +343,7 @@ export default function AdminHistoryPage() {
               </tr>
             ) : !participants || participants.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-4 text-center">
+                <td colSpan={8} className="p-4 text-center">
                   데이터가 없습니다.
                 </td>
               </tr>
@@ -341,41 +354,30 @@ export default function AdminHistoryPage() {
                   className="border-b cursor-pointer hover:bg-muted/50"
                   onClick={() => handleRowClick(participant)}
                 >
+                  <td className="p-4 text-center">{participant.id.substring(0, 8)}</td>
                   <td className="p-4 text-center">{participant.name}</td>
                   <td className="p-4 text-center">{participant.phone}</td>
-                  <td className="p-4 text-center">{participant.nickname}</td>
-                  <td className="p-4 text-center">
-                    <span className={`px-2 py-1 rounded-md text-xs ${
-                      participant.approval 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}>
-                      {participant.approval ? "승인" : "대기중"}
-                    </span>
-                  </td>
+                  <td className="p-4 text-center">{participant.login_account}</td>
+                  <td className="p-4 text-center">{participant.event_account}</td>
                   <td className="p-4 text-center">
                     <Link
                       href={`/admin/reviews/${encodeURIComponent(participant.reviews.id)}`}
                       className="text-blue-600 hover:underline"
-                      target="_blank"
                     >
                       {participant.reviews.title}
                     </Link>
                   </td>
                   <td className="p-4 text-center">
-                    {participant.reviews.review_fee.toLocaleString()}원
-                  </td>
-                  <td className="p-4 text-center">
-                    {participant.user_images && participant.user_images.length > 0 ? (
+                    {participant.review_image ? (
                       <div
                         className="relative w-10 h-10 rounded-md overflow-hidden cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleImageClick(participant.user_images[0], e);
+                          handleImageClick(participant.review_image!, e);
                         }}
                       >
                         <Image
-                          src={participant.user_images[0]}
+                          src={participant.review_image}
                           alt="리뷰 이미지"
                           fill
                           className="object-cover"
@@ -497,27 +499,22 @@ export default function AdminHistoryPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="nickname">닉네임</Label>
+                <Label htmlFor="email">이메일</Label>
                 <Input
-                  id="nickname"
-                  value={selectedParticipant.nickname}
+                  id="email"
+                  value={selectedParticipant.login_account}
                   readOnly
                   className=""
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="approval">승인상태</Label>
-                <div className="h-10 px-3 py-2 rounded-md border border-input flex items-center">
-                  <span
-                    className={`px-2 py-1 rounded-md text-xs ${
-                      selectedParticipant.approval 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}
-                  >
-                    {selectedParticipant.approval ? "승인" : "대기중"}
-                  </span>
-                </div>
+                <Label htmlFor="eventAccount">참여계정</Label>
+                <Input
+                  id="eventAccount"
+                  value={selectedParticipant.event_account}
+                  readOnly
+                  className=""
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="eventName">참여 이벤트</Label>
@@ -585,59 +582,49 @@ export default function AdminHistoryPage() {
                       className="text-sm"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="reviewFee" className="text-xs">리뷰비</Label>
-                    <Input
-                      id="reviewFee"
-                      value={`${selectedParticipant.reviews.review_fee.toLocaleString()}원`}
-                      readOnly
-                      className="text-sm"
-                    />
-                  </div>
                 </div>
               </div>
-
               <div className="grid gap-2">
-                <Label htmlFor="submittedAt">제출일</Label>
-                <Input
-                  id="submittedAt"
-                  value={new Date(selectedParticipant.submitted_at).toLocaleString()}
-                  readOnly
-                  className=""
-                />
+                <Label htmlFor="status">상태</Label>
+                <div className="h-10 px-3 py-2 rounded-md border border-input flex items-center">
+                  <span
+                    className={`px-2 py-1 rounded-md text-xs ${
+                      getStatusStyle("completed").className
+                    }`}
+                  >
+                    {getStatusStyle("completed").text}
+                  </span>
+                </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="paymentStatus">정산상태</Label>
+                <Label htmlFor="createdAt">신청일</Label>
                 <Input
-                  id="paymentStatus"
-                  value={`${selectedParticipant.payment_status} (${selectedParticipant.payment_amount.toLocaleString()}원)`}
+                  id="createdAt"
+                  value={new Date(selectedParticipant.created_at).toLocaleString()}
                   readOnly
                   className=""
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="reviewImage">리뷰 인증 이미지</Label>
-                <div className="min-h-[150px] rounded-md flex items-center justify-start p-4 gap-2">
-                  {selectedParticipant.user_images && selectedParticipant.user_images.length > 0 ? (
-                    selectedParticipant.user_images.map((imageUrl, index) => (
-                      <div 
-                        key={index}
-                        className="relative aspect-square rounded-lg overflow-hidden w-32 cursor-pointer"
-                        onClick={(e) => handleImageClick(imageUrl, e)}
-                      >
-                        <Image
-                          src={imageUrl}
-                          alt={`리뷰 인증 이미지 ${index + 1}`}
-                          fill
-                          className="object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src =
-                              "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
-                          }}
-                        />
-                      </div>
-                    ))
+                <div className="min-h-[150px] rounded-md flex items-center justify-start p-4">
+                  {selectedParticipant.review_image ? (
+                    <div 
+                      className="relative aspect-square rounded-lg overflow-hidden w-32 cursor-pointer"
+                      onClick={(e) => handleImageClick(selectedParticipant.review_image!, e)}
+                    >
+                      <Image
+                        src={selectedParticipant.review_image}
+                        alt="리뷰 인증 이미지"
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src =
+                            "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
+                        }}
+                      />
+                    </div>
                   ) : (
                     <span className="text-sm text-muted-foreground">
                       리뷰 이미지가 없습니다.
